@@ -1,0 +1,3136 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PocketLedger — Personal Money, Split Balance & People Ledger</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            slate: {
+              850: '#131c2e',
+              925: '#0b1120',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.3);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.5);
+    }
+
+    .lent-pill-pattern {
+      background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(245, 158, 11, 0.07),
+        rgba(245, 158, 11, 0.07) 6px,
+        rgba(245, 158, 11, 0.15) 6px,
+        rgba(245, 158, 11, 0.15) 12px
+      );
+    }
+
+    .borrowed-pill-pattern {
+      background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(168, 85, 247, 0.07),
+        rgba(168, 85, 247, 0.07) 6px,
+        rgba(168, 85, 247, 0.15) 6px,
+        rgba(168, 85, 247, 0.15) 12px
+      );
+    }
+
+    .card-hover {
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-1px);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-925 text-slate-900 dark:text-slate-100 font-sans min-h-screen selection:bg-indigo-500 selection:text-white transition-colors duration-200">
+
+  <!-- ==================== TOP NAVIGATION BAR ==================== -->
+  <header class="sticky top-0 z-30 backdrop-blur-md bg-white/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+      <!-- Brand Logo & Math Sync Status -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 via-indigo-500 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+          <i class="fa-solid fa-scale-balanced text-lg"></i>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <h1 class="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">PocketLedger</h1>
+            <span id="mathSyncBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/90 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1" title="Every balance, split, person total, and log entry is deterministically verified">
+              <i class="fa-solid fa-shield-check text-[10px]"></i>
+              <span>100% Synced Ledger</span>
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Multi-Balance Splits • Auto-Account Borrowing • Per-Person Active Directory</p>
+        </div>
+      </div>
+
+      <!-- Top Controls -->
+      <div class="flex items-center flex-wrap gap-2">
+        <button onclick="clearAllAndStartFresh()" class="text-xs font-bold px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-sm shadow-rose-500/20 transition flex items-center gap-1.5" title="Wipe all values and start with an empty app">
+          <i class="fa-solid fa-broom"></i>
+          <span>Clear All &amp; Start Fresh</span>
+        </button>
+
+        <button onclick="loadDemoScenario()" class="text-xs font-semibold px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-wand-magic-sparkles text-indigo-500"></i>
+          <span>Load Sample Demo</span>
+        </button>
+
+        <button onclick="toggleTheme()" class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition flex items-center justify-center" title="Toggle Dark/Light Mode">
+          <i id="themeIcon" class="fa-solid fa-sun text-amber-400"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Undo Clear Banner -->
+    <div id="undoClearBanner" class="hidden bg-indigo-600 text-white px-4 py-2 text-xs font-medium">
+      <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-circle-check"></i>
+          <span>All data cleared! You can now test from a completely blank slate—create a balance or borrow directly below.</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="undoClearAll()" class="px-2.5 py-1 rounded-lg bg-white text-indigo-700 font-bold hover:bg-indigo-50 transition">
+            <i class="fa-solid fa-rotate-left mr-1"></i>Undo Clear
+          </button>
+          <button onclick="dismissUndoBanner()" class="text-indigo-200 hover:text-white px-1">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN WORKSPACE ==================== -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- 1. TOP OVERVIEW & RECONCILIATION BAR -->
+    <section aria-label="Account Overview" class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-sm">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 mb-4 border-b border-slate-100 dark:border-slate-800/80">
+        <div>
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>Live Bank &amp; People Reconciliation</span>
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-0.5">
+            Every transaction, split, and person balance is mathematically linked. Edit or delete any log entry and all numbers recalculate automatically.
+          </p>
+        </div>
+
+        <!-- Master Formula Pill -->
+        <div id="globalFormulaBanner" class="flex flex-wrap items-center gap-2 bg-slate-50 dark:bg-slate-850 px-3.5 py-2 rounded-xl border border-slate-200/80 dark:border-slate-800 font-mono text-xs sm:text-sm">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- 4 Key Summary Metric Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <!-- Card 1: Actual Bank In-Hand -->
+        <div class="p-3.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/25 border border-emerald-200/80 dark:border-emerald-800/50">
+          <div class="flex items-center justify-between text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+            <span>ACTUAL BANK / UPI IN-HAND</span>
+            <i class="fa-solid fa-building-columns text-emerald-600 dark:text-emerald-400"></i>
+          </div>
+          <div id="statTotalInHand" class="text-2xl font-extrabold font-mono text-emerald-700 dark:text-emerald-300 mt-1">₹0</div>
+          <p id="statTotalInHandSub" class="text-[11px] text-emerald-700/80 dark:text-emerald-400/80 mt-1">Physical money currently in your account</p>
+        </div>
+
+        <!-- Card 2: Lent Out (To Receive Back) -->
+        <div class="p-3.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/25 border border-amber-300/80 dark:border-amber-800/60 border-dashed">
+          <div class="flex items-center justify-between text-xs font-semibold text-amber-800 dark:text-amber-300">
+            <span>LENT OUT (TO RECEIVE BACK)</span>
+            <i class="fa-solid fa-hand-holding-dollar text-amber-600 dark:text-amber-400"></i>
+          </div>
+          <div id="statTotalLent" class="text-2xl font-extrabold font-mono text-amber-700 dark:text-amber-300 mt-1">+ ₹0</div>
+          <p id="statTotalLentSub" class="text-[11px] text-amber-700/80 dark:text-amber-400/80 mt-1">Unspent money temporarily with others</p>
+        </div>
+
+        <!-- Card 3: Borrowed / Custody (To Pay Back) -->
+        <div class="p-3.5 rounded-xl bg-purple-50/70 dark:bg-purple-950/25 border border-purple-200/80 dark:border-purple-800/60">
+          <div class="flex items-center justify-between text-xs font-semibold text-purple-800 dark:text-purple-300">
+            <span>BORROWED / CUSTODY (TO PAY)</span>
+            <i class="fa-solid fa-user-clock text-purple-600 dark:text-purple-400"></i>
+          </div>
+          <div id="statTotalBorrowed" class="text-2xl font-extrabold font-mono text-purple-700 dark:text-purple-300 mt-1">₹0</div>
+          <p id="statTotalBorrowedSub" class="text-[11px] text-purple-700/80 dark:text-purple-400/80 mt-1">Money held for or borrowed from others</p>
+        </div>
+
+        <!-- Card 4: Your True Personal Net Worth -->
+        <div class="p-3.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/25 border border-indigo-200/80 dark:border-indigo-800/50">
+          <div class="flex items-center justify-between text-xs font-semibold text-indigo-800 dark:text-indigo-300">
+            <span>YOUR TRUE OWN MONEY</span>
+            <i class="fa-solid fa-vault text-indigo-600 dark:text-indigo-400"></i>
+          </div>
+          <div id="statTrueOwn" class="text-2xl font-extrabold font-mono text-indigo-700 dark:text-indigo-300 mt-1">₹0</div>
+          <p id="statTrueOwnSub" class="text-[11px] text-indigo-700/80 dark:text-indigo-400/80 mt-1">(Bank In-Hand + Lent Out) − Borrowed</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. INTERACTIVE BALANCE COMBINER (SUM CALCULATOR) -->
+    <section aria-label="Balance Combiner" class="bg-gradient-to-r from-indigo-950 via-slate-900 to-slate-900 text-white rounded-2xl border border-indigo-800/60 p-4 sm:p-5 shadow-md">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
+              <i class="fa-solid fa-calculator mr-1"></i>Balance Combiner
+            </span>
+            <h2 class="text-sm sm:text-base font-bold text-white">Select &amp; Sum Any Combination of Balances (A, B, C...)</h2>
+          </div>
+        </div>
+
+        <!-- Quick Filter Pills -->
+        <div class="flex flex-wrap items-center gap-1.5">
+          <button onclick="setCombinerPreset('all')" class="text-xs px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 transition font-medium">
+            Select All
+          </button>
+          <button onclick="setCombinerPreset('own')" class="text-xs px-2.5 py-1 rounded-lg bg-indigo-500/30 hover:bg-indigo-500/50 text-indigo-200 border border-indigo-400/30 transition font-medium">
+            My Money Only (Excl. Borrowed)
+          </button>
+          <button onclick="setCombinerPreset('borrowed')" class="text-xs px-2.5 py-1 rounded-lg bg-purple-500/30 hover:bg-purple-500/50 text-purple-200 border border-purple-400/30 transition font-medium">
+            Borrowed / Custody Only
+          </button>
+          <button onclick="setCombinerPreset('none')" class="text-xs px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-slate-400 transition font-medium">
+            Clear Selection
+          </button>
+        </div>
+      </div>
+
+      <!-- Balance Selector Chips -->
+      <div id="combinerCheckboxes" class="flex flex-wrap items-center gap-2.5 my-3.5">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Combiner Output Bar -->
+      <div class="bg-slate-950/75 rounded-xl p-3.5 border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Combined Equation of Selected Balances</div>
+          <div id="combinerEquationText" class="text-xs sm:text-sm font-mono text-slate-200 flex flex-wrap items-center gap-1.5">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-4 sm:gap-6 border-t md:border-t-0 pt-3 md:pt-0 border-slate-800">
+          <div>
+            <div class="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">Selected In-Hand</div>
+            <div id="combinerInHand" class="text-lg sm:text-xl font-bold font-mono text-emerald-400">₹0</div>
+          </div>
+          <div class="text-slate-600 font-mono text-lg">+</div>
+          <div>
+            <div class="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Selected Lent Out</div>
+            <div id="combinerLent" class="text-lg sm:text-xl font-bold font-mono text-amber-400">₹0</div>
+          </div>
+          <div class="text-slate-600 font-mono text-lg">=</div>
+          <div class="bg-indigo-600/25 border border-indigo-500/40 px-3.5 py-1.5 rounded-lg">
+            <div class="text-[10px] uppercase tracking-wider text-indigo-300 font-semibold">Combined Total</div>
+            <div id="combinerTotal" class="text-xl sm:text-2xl font-extrabold font-mono text-white">₹0</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. TWO-COLUMN MAIN WORKSPACE -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- ==================== LEFT COLUMN (7 cols): BALANCES (A, B, C...) & SUBCATEGORIES ==================== -->
+      <div class="lg:col-span-7 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span>Balances &amp; Subcategory Splits</span>
+              <span id="balanceCountBadge" class="text-xs font-mono px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">0</span>
+            </h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+              Shows <span class="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">In-Hand</span> + <span class="font-mono text-amber-600 dark:text-amber-400 font-semibold">"Lent Out"</span> = <span class="font-mono text-indigo-600 dark:text-indigo-400 font-semibold">Total</span>. Borrowed accounts auto-create when you borrow!
+            </p>
+          </div>
+
+          <button onclick="openNewBalanceModal()" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-semibold shadow-sm shadow-indigo-500/20 transition flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i>
+            <span>New Balance (A, B...)</span>
+          </button>
+        </div>
+
+        <!-- Balances List Container -->
+        <div id="balancesContainer" class="space-y-4">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- ==================== RIGHT COLUMN (5 cols): PEOPLE LEDGER, UPI TRANSACTIONS, & SYNCED LOG ==================== -->
+      <div class="lg:col-span-5 space-y-6">
+
+        <!-- RIGHT BOX 1: PEOPLE LEDGER (BORROW AUTO-ACCOUNT + LEND + ACTIVE DIRECTORY) -->
+        <section class="bg-white dark:bg-slate-900 rounded-2xl border-2 border-amber-500/40 dark:border-amber-500/30 shadow-sm overflow-hidden">
+          <!-- Header -->
+          <div class="p-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-amber-500/10 via-purple-500/5 to-transparent flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                <i class="fa-solid fa-users-viewfinder text-base"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-extrabold text-slate-900 dark:text-white">People Ledger: Borrow &amp; Lend</h3>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                  Auto-creates account on borrow • Groups active people in order
+                </p>
+              </div>
+            </div>
+
+            <!-- Mode Switcher: Borrow vs Lend -->
+            <div class="inline-flex rounded-xl p-0.5 bg-slate-200/80 dark:bg-slate-800 shrink-0">
+              <button type="button" id="peopleModeBorrowBtn" onclick="setPeopleFormMode('borrow')" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white shadow-xs transition">
+                <i class="fa-solid fa-arrow-down-left mr-1"></i>Borrow
+              </button>
+              <button type="button" id="peopleModeLendBtn" onclick="setPeopleFormMode('lend')" class="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">
+                <i class="fa-solid fa-paper-plane mr-1"></i>Lend Out
+              </button>
+            </div>
+          </div>
+
+          <div class="p-4 space-y-5">
+            <!-- SMART BORROW / LEND FORM -->
+            <form id="peopleActionForm" onsubmit="handlePeopleFormSubmit(event)" class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200/90 dark:border-slate-800 space-y-3">
+              <input type="hidden" id="peopleFormMode" value="borrow" />
+
+              <div id="peopleFormBanner" class="flex items-center justify-between text-xs font-bold text-purple-700 dark:text-purple-300">
+                <span><i class="fa-solid fa-hand-holding-medical mr-1.5"></i>Receive / Borrow Money from Someone</span>
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-purple-500/15 text-purple-600 dark:text-purple-300">Auto-Account Ready</span>
+              </div>
+
+              <!-- Smart Person Combobox with Instant Dropdown of Active People -->
+              <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                <div class="sm:col-span-7 relative" id="personComboboxContainer">
+                  <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                    Person Name <span class="text-slate-400 font-normal">(Pick active or type new)</span>
+                  </label>
+                  <div class="relative">
+                    <input
+                      type="text"
+                      id="personNameInput"
+                      autocomplete="off"
+                      required
+                      onfocus="openPersonDropdown()"
+                      oninput="filterPersonDropdown(); updatePeopleFormPreview();"
+                      placeholder="e.g. Rahul, Pawan..."
+                      class="w-full rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-3 pr-8 py-2 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <button type="button" onclick="togglePersonDropdown()" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                      <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </button>
+                  </div>
+
+                  <!-- Custom Instant Dropdown Menu showing Active People & Status -->
+                  <div id="personDropdownMenu" class="hidden absolute left-0 right-0 top-full mt-1 z-40 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700/60">
+                    <!-- Populated dynamically by JS -->
+                  </div>
+                </div>
+
+                <!-- Amount Input -->
+                <div class="sm:col-span-5">
+                  <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Amount (₹)</label>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400">₹</span>
+                    <input
+                      type="number"
+                      id="peopleAmountInput"
+                      min="0.01"
+                      step="any"
+                      required
+                      oninput="updatePeopleFormPreview()"
+                      placeholder="e.g. 5000"
+                      class="w-full rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-7 pr-3 py-2 text-xs sm:text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Target Balance Selector (For Borrow: Auto-Create/Reuse Person Account by default! For Lend: Select Source Balance) -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label id="peopleBalanceLabel" class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                    Account / Balance Handling
+                  </label>
+                  <select
+                    id="peopleBalanceSelect"
+                    onchange="updatePeopleFormPreview()"
+                    class="w-full rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <!-- Populated by JS -->
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Note (Optional)</label>
+                  <input
+                    type="text"
+                    id="peopleNoteInput"
+                    placeholder="e.g. Urgent UPI transfer"
+                    class="w-full rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <!-- Live Preview Box -->
+              <div id="peopleFormPreview" class="text-[11px] font-mono rounded-xl px-3 py-2 bg-purple-500/10 border border-purple-500/30 text-purple-800 dark:text-purple-200">
+                <!-- Populated by JS -->
+              </div>
+
+              <button
+                type="submit"
+                id="peopleSubmitBtn"
+                class="w-full py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-2"
+              >
+                <i class="fa-solid fa-bolt"></i>
+                <span>Borrow Money &amp; Auto-Create/Update Account</span>
+              </button>
+            </form>
+
+            <!-- ==================== ACTIVE PEOPLE DIRECTORY (ORDERED, GROUPED BY PERSON) ==================== -->
+            <div class="space-y-4 pt-1">
+              <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                <div>
+                  <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                    <i class="fa-solid fa-address-book text-indigo-500"></i>
+                    <span>Active People Directory</span>
+                  </h4>
+                  <p class="text-[11px] text-slate-400">Grouped by person &amp; sorted by highest active amount</p>
+                </div>
+
+                <button
+                  type="button"
+                  onclick="toggleShowSettledPeople()"
+                  id="toggleSettledBtn"
+                  class="text-[11px] font-semibold px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
+                >
+                  Show Settled (0)
+                </button>
+              </div>
+
+              <!-- 1. ACTIVE BORROWED (TO GIVE / PAY BACK TO THEM) -->
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                    <span>To Give Back (Borrowed from Them)</span>
+                  </span>
+                  <span id="activeBorrowersCountBadge" class="text-[11px] font-mono font-bold text-purple-600 dark:text-purple-400">0 Active</span>
+                </div>
+                <div id="activeBorrowedPeopleList" class="space-y-2">
+                  <!-- Populated by JS: Strictly flat, properly closed cards per person -->
+                </div>
+              </div>
+
+              <!-- 2. ACTIVE LENT OUT (TO RECEIVE BACK FROM THEM) -->
+              <div class="space-y-2 pt-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                    <span>To Receive Back (Holding My Money)</span>
+                  </span>
+                  <span id="activeLendersCountBadge" class="text-[11px] font-mono font-bold text-amber-600 dark:text-amber-400">0 Active</span>
+                </div>
+                <div id="activeLentPeopleList" class="space-y-2">
+                  <!-- Populated by JS: Strictly flat, properly closed cards per person -->
+                </div>
+              </div>
+
+              <!-- 3. OPTIONAL SETTLED PEOPLE SECTION -->
+              <div id="settledPeopleSection" class="hidden space-y-2 pt-2 border-t border-dashed border-slate-200 dark:border-slate-800">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Settled People (₹0 Balance)</div>
+                <div id="settledPeopleList" class="space-y-1.5"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RIGHT BOX 2: UPI / CASH TRANSACTION RECORDER (SPEND / CUT OR DEPOSIT / ADD) -->
+        <section class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 bg-slate-50/50 dark:bg-slate-850/50">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                <i class="fa-solid fa-receipt"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-slate-900 dark:text-white">UPI Expense / Deposit</h3>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">Cut spent money from a subcategory or deposit funds</p>
+              </div>
+            </div>
+
+            <div class="inline-flex rounded-xl p-0.5 bg-slate-200/80 dark:bg-slate-800">
+              <button type="button" id="txModeExpenseBtn" onclick="setTxMode('expense')" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-600 text-white shadow-xs transition">
+                - Spend / Cut
+              </button>
+              <button type="button" id="txModeDepositBtn" onclick="setTxMode('deposit')" class="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">
+                + Deposit
+              </button>
+            </div>
+          </div>
+
+          <form id="transactionForm" onsubmit="handleTransactionSubmit(event)" class="p-4 space-y-3.5">
+            <input type="hidden" id="txModeInput" value="expense" />
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">1. Balance Bucket</label>
+                <select id="txBalanceSelect" onchange="populateTxSplitsDropdown(); updateTxLivePreview();" class="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <!-- Populated by JS -->
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">2. Subcategory (Split)</label>
+                <select id="txSplitSelect" onchange="updateTxLivePreview()" class="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <!-- Populated by JS -->
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">3. Amount (₹)</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400">₹</span>
+                  <input type="number" id="txAmountInput" min="0.01" step="any" required oninput="updateTxLivePreview()" placeholder="e.g. 3000" class="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-7 pr-3 py-2 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">4. Note (Optional)</label>
+                <input type="text" id="txNoteInput" placeholder="e.g. Half rent paid via UPI" class="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+            </div>
+
+            <div id="txLivePreview" class="rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200/80 dark:border-slate-800 p-3 text-xs space-y-1">
+              <!-- Populated by JS -->
+            </div>
+
+            <button type="submit" id="txSubmitBtn" class="w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-check-circle"></i>
+              <span>Deduct from Subcategory &amp; Update Balance</span>
+            </button>
+          </form>
+        </section>
+
+        <!-- RIGHT BOX 3: TWO-WAY SYNCED TRANSACTION LOG (EDIT OR DELETE ANY ENTRY) -->
+        <section class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-slate-100 dark:border-slate-800 space-y-2.5">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-clock-rotate-left text-indigo-500"></i>
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <h3 class="text-sm font-bold text-slate-900 dark:text-white">Synced Transaction Log</h3>
+                    <span id="txLogCountBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">0</span>
+                  </div>
+                  <p class="text-[10px] text-slate-400">Edit (✏️) or Delete (🗑️) any log row to automatically recalculate balances</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Filter Tabs -->
+            <div class="flex flex-wrap items-center gap-1 text-[11px]">
+              <button onclick="setLogFilter('all')" id="logFilter_all" class="px-2.5 py-1 rounded-lg font-semibold bg-indigo-600 text-white">All</button>
+              <button onclick="setLogFilter('expense')" id="logFilter_expense" class="px-2.5 py-1 rounded-lg font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">Spent</button>
+              <button onclick="setLogFilter('people')" id="logFilter_people" class="px-2.5 py-1 rounded-lg font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">Borrow / Lend</button>
+              <button onclick="setLogFilter('deposit')" id="logFilter_deposit" class="px-2.5 py-1 rounded-lg font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">Deposits</button>
+            </div>
+          </div>
+
+          <div id="transactionLogList" class="divide-y divide-slate-100 dark:divide-slate-800/70 max-h-96 overflow-y-auto">
+            <!-- Populated by JS -->
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- MODAL 1: CREATE OR EDIT MAIN BALANCE (A, B, C...) -->
+  <div id="balanceModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <h3 id="balanceModalTitle" class="text-base font-bold text-slate-900 dark:text-white">Create New Balance</h3>
+        <button onclick="closeBalanceModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="balanceModalForm" onsubmit="handleSaveBalanceModal(event)" class="space-y-3.5">
+        <input type="hidden" id="modalBalanceId" value="" />
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Code</label>
+            <input type="text" id="modalBalanceCode" maxlength="4" required placeholder="e.g. A" class="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm font-mono font-bold uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div class="col-span-2">
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Balance Name</label>
+            <input type="text" id="modalBalanceName" required placeholder="e.g. Monthly Budget / Savings" class="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+        </div>
+
+        <div>
+          <label id="modalBalanceAmountLabel" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Current In-Hand Amount (₹)</label>
+          <input type="number" id="modalBalanceAmount" min="0" step="any" required placeholder="e.g. 10000" class="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <p class="text-[11px] text-slate-400 mt-1">Automatically syncs with the Transaction Log.</p>
+        </div>
+
+        <label class="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 cursor-pointer">
+          <input type="checkbox" id="modalBalanceCustody" class="mt-1 rounded text-indigo-600 focus:ring-indigo-500" />
+          <div class="text-xs">
+            <div class="font-semibold text-slate-800 dark:text-slate-200">Custody / Other Person's Money</div>
+            <div class="text-slate-500 dark:text-slate-400">Excludes this bucket when calculating "Your True Own Money".</div>
+          </div>
+        </label>
+
+        <div class="flex items-center justify-between gap-2 pt-2">
+          <button type="button" id="modalDeleteBalanceBtn" onclick="deleteBalanceFromModal()" class="hidden px-3 py-2 rounded-xl text-xs font-semibold bg-rose-500/10 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white transition">
+            <i class="fa-solid fa-trash-can mr-1"></i>Delete Balance &amp; Logs
+          </button>
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" onclick="closeBalanceModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">Cancel</button>
+            <button type="submit" class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white">Save Balance</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: ADD OR EDIT SUBCATEGORY SPLIT -->
+  <div id="splitModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div>
+          <h3 id="splitModalTitle" class="text-base font-bold text-slate-900 dark:text-white">Subcategory Split</h3>
+          <p id="splitModalSubtitle" class="text-xs text-slate-500 dark:text-slate-400"></p>
+        </div>
+        <button onclick="closeSplitModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="splitModalForm" onsubmit="handleSaveSplitModal(event)" class="space-y-3.5">
+        <input type="hidden" id="modalSplitBalanceId" value="" />
+        <input type="hidden" id="modalSplitId" value="" />
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Subcategory Name</label>
+          <input type="text" id="modalSplitName" required placeholder="e.g. Rent, Travel, Groceries" class="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Current Allotted Amount (₹)</label>
+            <button type="button" onclick="fillRemainingUnallocated()" class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+              Use Available Unallocated
+            </button>
+          </div>
+          <input type="number" id="modalSplitAmount" min="0" step="any" required placeholder="e.g. 2000" class="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <p id="modalSplitHelper" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1"></p>
+        </div>
+
+        <label class="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 cursor-pointer">
+          <input type="checkbox" id="modalSplitIncreaseBalance" class="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500" />
+          <div class="text-xs">
+            <div class="font-semibold text-slate-800 dark:text-slate-200">Also adjust Parent Balance's In-Hand Total by this change</div>
+            <div class="text-slate-500 dark:text-slate-400">Leave unchecked to allot from the existing balance pool. Check if depositing/removing this amount from the balance too.</div>
+          </div>
+        </label>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeSplitModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white">Save Subcategory</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 3: SETTLE / RECEIVE BACK OR PAY BACK PERSON MODAL -->
+  <div id="settlePersonModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div>
+          <h3 id="settleModalTitle" class="text-base font-bold text-slate-900 dark:text-white">Settle Balance</h3>
+          <p id="settleModalSubtitle" class="text-xs text-slate-500 dark:text-slate-400"></p>
+        </div>
+        <button onclick="closeSettlePersonModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="settlePersonForm" onsubmit="handleConfirmSettlePerson(event)" class="space-y-3.5">
+        <input type="hidden" id="settleModalPersonId" value="" />
+        <input type="hidden" id="settleModalDirection" value="" /> <!-- 'receive_lent' or 'pay_borrowed' -->
+
+        <div>
+          <label id="settleModalBalanceLabel" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Target Balance Bucket</label>
+          <select id="settleModalBalanceSelect" onchange="updateSettleModalMax()" class="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <!-- Populated by JS -->
+          </select>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Amount (₹)</label>
+            <button type="button" onclick="fillFullSettleAmount()" class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">
+              Use Full Amount
+            </button>
+          </div>
+          <input type="number" id="settleModalAmount" min="0.01" step="any" required class="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Note (Optional)</label>
+          <input type="text" id="settleModalNote" placeholder="e.g. Settled via UPI" class="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+
+        <!-- Option to auto-remove empty auto-created custody balance when fully paid back -->
+        <label id="settleAutoCleanupWrap" class="hidden items-start gap-2.5 p-3 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/60 cursor-pointer">
+          <input type="checkbox" id="settleAutoCleanupCheck" checked class="mt-0.5 rounded text-purple-600 focus:ring-purple-500" />
+          <div class="text-xs">
+            <div class="font-semibold text-purple-900 dark:text-purple-200">Auto-close temporary Borrowed Balance if fully paid (₹0)</div>
+            <div class="text-purple-700/80 dark:text-purple-300/80">Keeps your Balances list clean once this person is completely paid back.</div>
+          </div>
+        </label>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeSettlePersonModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">Cancel</button>
+          <button type="submit" id="settleModalSubmitBtn" class="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white">Confirm</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 4: EDIT TRANSACTION IN LOG (2-WAY SYNC) -->
+  <div id="editTxModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 dark:text-white">Edit Transaction</h3>
+          <p id="editTxModalSubtitle" class="text-xs text-slate-500 dark:text-slate-400">Updating this immediately recalculates all linked balances &amp; splits.</p>
+        </div>
+        <button onclick="closeEditTxModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleSaveEditTx(event)" class="space-y-3.5">
+        <input type="hidden" id="editTxId" value="" />
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Transaction Amount (₹)</label>
+          <input type="number" id="editTxAmount" min="0.01" step="any" required class="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Description / Note</label>
+          <input type="text" id="editTxNote" class="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+
+        <div class="flex items-center justify-between gap-2 pt-2">
+          <button type="button" onclick="deleteTxFromEditModal()" class="px-3 py-2 rounded-xl text-xs font-semibold bg-rose-500/10 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white transition">
+            <i class="fa-solid fa-trash-can mr-1"></i>Delete Transaction
+          </button>
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" onclick="closeEditTxModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">Cancel</button>
+            <button type="submit" class="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white">Update &amp; Recalculate</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- ==================== DETERMINISTIC RELATIONAL LEDGER ENGINE ==================== -->
+  <script>
+    const STORAGE_KEY = 'pocket_ledger_v2_deterministic';
+    let lastBackupBeforeClear = null;
+    let showSettledPeople = false;
+
+    /**
+     * Exact 2-decimal paise rounding to eliminate IEEE-754 floating-point drift (e.g., 23.60000000004 -> 23.6)
+     */
+    function round2(n) {
+      const val = Number(n);
+      if (!Number.isFinite(val)) return 0;
+      return Math.round((val + Number.EPSILON) * 100) / 100;
+    }
+
+    /**
+     * Format number in Indian Rupee format (e.g., ₹6,523.6 or ₹10,000)
+     */
+    function formatINR(amount, includeSymbol = true) {
+      const num = round2(amount);
+      const isNegative = num < 0;
+      const absNum = Math.abs(num);
+      const formatted = absNum.toLocaleString('en-IN', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      });
+      return `${isNegative ? '-' : ''}${includeSymbol ? '₹' : ''}${formatted}`;
+    }
+
+    /**
+     * Clean Empty State for "Clear All & Start Fresh"
+     */
+    function getEmptyFreshState() {
+      return {
+        balances: [],
+        people: [],
+        transactions: [],
+        selectedForCombiner: [],
+        logFilter: 'all'
+      };
+    }
+
+    /**
+     * Default Demo State matching the user's exact scenario:
+     * - Balance A: Nov Monthly Budget (₹10,000 deposit, ₹6,000 lent to Pawan -> ₹4,000 In-Hand + "₹6,000" Out = ₹10,000)
+     *   Splits: Rent ₹7,000, Travel ₹2,000, Food & Groceries ₹1,000
+     * - Balance B: Past Month Savings (₹9,000 deposit)
+     *   Splits: Emergency Buffer ₹6,000, Personal Goal ₹3,000
+     * - Balance C: Rahul (Borrowed) (Auto-created Custody Balance with ₹5,000 borrowed from Rahul)
+     * - Balance D: Extra Buffer (₹6,000 deposit)
+     *   Splits: Utilities & Wi-Fi ₹2,500, Weekend & Misc ₹1,500 (Unallocated ₹2,000)
+     */
+    function getDefaultDemoState() {
+      const now = Date.now();
+      return {
+        balances: [
+          {
+            id: 'bal_a',
+            code: 'A',
+            name: 'November Monthly Budget',
+            isCustody: false,
+            autoCreatedForPersonId: null,
+            splits: [
+              { id: 'sp_a1', name: 'Rent', baseAmount: 7000 },
+              { id: 'sp_a2', name: 'Travel', baseAmount: 2000 },
+              { id: 'sp_a3', name: 'Food & Groceries', baseAmount: 1000 }
+            ]
+          },
+          {
+            id: 'bal_b',
+            code: 'B',
+            name: 'Past Month Savings',
+            isCustody: false,
+            autoCreatedForPersonId: null,
+            splits: [
+              { id: 'sp_b1', name: 'Emergency Buffer', baseAmount: 6000 },
+              { id: 'sp_b2', name: 'Gadgets & Personal', baseAmount: 3000 }
+            ]
+          },
+          {
+            id: 'bal_c',
+            code: 'C',
+            name: 'Rahul (Borrowed)',
+            isCustody: true,
+            autoCreatedForPersonId: 'p_rahul',
+            splits: []
+          },
+          {
+            id: 'bal_d',
+            code: 'D',
+            name: 'Extra / Current Month Buffer',
+            isCustody: false,
+            autoCreatedForPersonId: null,
+            splits: [
+              { id: 'sp_d1', name: 'Utilities & Broadband', baseAmount: 2500 },
+              { id: 'sp_d2', name: 'Weekend & Misc', baseAmount: 1500 }
+            ]
+          }
+        ],
+        people: [
+          { id: 'p_pawan', name: 'Pawan' },
+          { id: 'p_rahul', name: 'Rahul' }
+        ],
+        transactions: [
+          {
+            id: 'tx_demo_1',
+            type: 'deposit',
+            balanceId: 'bal_a',
+            splitId: null,
+            personId: null,
+            amount: 10000,
+            isInitial: true,
+            note: 'Initial Deposit for Balance A (Nov Budget)',
+            timestamp: '09:00 AM',
+            createdAt: now - 50000
+          },
+          {
+            id: 'tx_demo_2',
+            type: 'deposit',
+            balanceId: 'bal_b',
+            splitId: null,
+            personId: null,
+            amount: 9000,
+            isInitial: true,
+            note: 'Initial Deposit for Balance B (Past Month Savings)',
+            timestamp: '09:05 AM',
+            createdAt: now - 40000
+          },
+          {
+            id: 'tx_demo_3',
+            type: 'borrow_in',
+            balanceId: 'bal_c',
+            splitId: null,
+            personId: 'p_rahul',
+            amount: 5000,
+            isInitial: true,
+            note: 'Borrowed / Received from Rahul (Auto-Account C)',
+            timestamp: '09:15 AM',
+            createdAt: now - 30000
+          },
+          {
+            id: 'tx_demo_4',
+            type: 'deposit',
+            balanceId: 'bal_d',
+            splitId: null,
+            personId: null,
+            amount: 6000,
+            isInitial: true,
+            note: 'Initial Deposit for Balance D (Extra Buffer)',
+            timestamp: '09:20 AM',
+            createdAt: now - 20000
+          },
+          {
+            id: 'tx_demo_5',
+            type: 'lend_out',
+            balanceId: 'bal_a',
+            splitId: null,
+            personId: 'p_pawan',
+            amount: 6000,
+            isInitial: false,
+            note: 'Lent to Pawan from Balance A',
+            timestamp: '10:30 AM',
+            createdAt: now - 10000
+          }
+        ],
+        selectedForCombiner: ['bal_a', 'bal_b', 'bal_d'],
+        logFilter: 'all'
+      };
+    }
+
+    let appState = loadState();
+    // Derived state cache populated by recomputeDerivedState()
+    let derived = {
+      balancesMap: {},
+      peopleMap: {},
+      lentMatrix: {},     // key: `${personId}__${balanceId}` -> active amount lent
+      borrowedMatrix: {}, // key: `${personId}__${balanceId}` -> active amount borrowed
+      totals: {
+        bankInHand: 0,
+        totalLentOut: 0,
+        totalBorrowed: 0,
+        totalPool: 0,
+        trueOwnMoney: 0,
+        isMathSynced: true
+      }
+    };
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return getDefaultDemoState();
+        const parsed = JSON.parse(raw);
+        if (!parsed || !Array.isArray(parsed.balances) || !Array.isArray(parsed.transactions)) {
+          return getDefaultDemoState();
+        }
+        return parsed;
+      } catch (e) {
+        return getDefaultDemoState();
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {
+        console.error('Failed to save state:', e);
+      }
+    }
+
+    /**
+     * ==================== CORE MATHEMATICAL ENGINE ====================
+     * Recomputes every Balance's inHand, lentOut, borrowedIn, every Split's currentAmount,
+     * and every Person's active Lent & Borrowed totals directly from appState.transactions.
+     * This guarantees 0 drift between logs, balances, splits, and people.
+     */
+    function recomputeDerivedState() {
+      const balancesMap = {};
+      const peopleMap = {};
+      const lentMatrix = {};
+      const borrowedMatrix = {};
+
+      // 1. Initialize balances and their splits
+      appState.balances.forEach(b => {
+        const computedSplits = (b.splits || []).map(sp => ({
+          ...sp,
+          baseAmount: round2(sp.baseAmount),
+          currentAmount: round2(sp.baseAmount)
+        }));
+        balancesMap[b.id] = {
+          ...b,
+          inHand: 0,
+          lentOut: 0,
+          borrowedIn: 0,
+          totalValue: 0,
+          splitsSum: 0,
+          unallocated: 0,
+          computedSplits,
+          activeLoansOut: [],     // [{ personId, personName, amount }]
+          activeBorrowsIn: []     // [{ personId, personName, amount }]
+        };
+      });
+
+      // 2. Initialize people
+      appState.people.forEach(p => {
+        peopleMap[p.id] = {
+          ...p,
+          totalLentToThem: 0,      // Money they hold of ours (To Receive Back)
+          totalBorrowedFromThem: 0,// Money we owe them (To Give Back)
+          lentByBalance: [],       // [{ balanceId, balanceCode, balanceName, amount, txCount }]
+          borrowedByBalance: [],   // [{ balanceId, balanceCode, balanceName, amount, txCount }]
+          txCount: 0
+        };
+      });
+
+      // Sort transactions chronologically (oldest first) for deterministic replay
+      const chronologicalTxs = [...appState.transactions].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+      chronologicalTxs.forEach(tx => {
+        const amt = round2(tx.amount);
+        const bal = balancesMap[tx.balanceId];
+        if (!bal) return;
+
+        if (tx.personId && peopleMap[tx.personId]) {
+          peopleMap[tx.personId].txCount += 1;
+        }
+
+        if (tx.type === 'deposit') {
+          bal.inHand = round2(bal.inHand + amt);
+          if (tx.splitId) {
+            const sp = bal.computedSplits.find(s => s.id === tx.splitId);
+            if (sp) sp.currentAmount = round2(sp.currentAmount + amt);
+          }
+        } else if (tx.type === 'expense') {
+          bal.inHand = round2(bal.inHand - amt);
+          if (tx.splitId) {
+            const sp = bal.computedSplits.find(s => s.id === tx.splitId);
+            if (sp) sp.currentAmount = round2(Math.max(0, sp.currentAmount - amt));
+          }
+        } else if (tx.type === 'lend_out') {
+          bal.inHand = round2(bal.inHand - amt);
+          if (tx.personId) {
+            const key = `${tx.personId}__${bal.id}`;
+            lentMatrix[key] = round2((lentMatrix[key] || 0) + amt);
+          }
+        } else if (tx.type === 'lend_repay') {
+          bal.inHand = round2(bal.inHand + amt);
+          if (tx.personId) {
+            const key = `${tx.personId}__${bal.id}`;
+            lentMatrix[key] = round2(Math.max(0, (lentMatrix[key] || 0) - amt));
+          }
+        } else if (tx.type === 'borrow_in') {
+          bal.inHand = round2(bal.inHand + amt);
+          if (tx.personId) {
+            const key = `${tx.personId}__${bal.id}`;
+            borrowedMatrix[key] = round2((borrowedMatrix[key] || 0) + amt);
+          }
+        } else if (tx.type === 'borrow_repay') {
+          bal.inHand = round2(bal.inHand - amt);
+          if (tx.personId) {
+            const key = `${tx.personId}__${bal.id}`;
+            borrowedMatrix[key] = round2(Math.max(0, (borrowedMatrix[key] || 0) - amt));
+          }
+        }
+      });
+
+      // 3. Aggregate lentMatrix & borrowedMatrix per Balance and per Person
+      Object.keys(lentMatrix).forEach(key => {
+        const activeAmt = round2(lentMatrix[key]);
+        if (activeAmt <= 0) return;
+        const [personId, balanceId] = key.split('__');
+        const bal = balancesMap[balanceId];
+        const person = peopleMap[personId];
+        if (!bal || !person) return;
+
+        bal.lentOut = round2(bal.lentOut + activeAmt);
+        bal.activeLoansOut.push({
+          personId,
+          personName: person.name,
+          amount: activeAmt
+        });
+
+        person.totalLentToThem = round2(person.totalLentToThem + activeAmt);
+        const lendTxCount = chronologicalTxs.filter(t => t.personId === personId && t.balanceId === balanceId && t.type === 'lend_out').length;
+        person.lentByBalance.push({
+          balanceId,
+          balanceCode: bal.code,
+          balanceName: bal.name,
+          amount: activeAmt,
+          txCount: lendTxCount
+        });
+      });
+
+      Object.keys(borrowedMatrix).forEach(key => {
+        const activeAmt = round2(borrowedMatrix[key]);
+        if (activeAmt <= 0) return;
+        const [personId, balanceId] = key.split('__');
+        const bal = balancesMap[balanceId];
+        const person = peopleMap[personId];
+        if (!bal || !person) return;
+
+        bal.borrowedIn = round2(bal.borrowedIn + activeAmt);
+        bal.activeBorrowsIn.push({
+          personId,
+          personName: person.name,
+          amount: activeAmt
+        });
+
+        person.totalBorrowedFromThem = round2(person.totalBorrowedFromThem + activeAmt);
+        const borrowTxCount = chronologicalTxs.filter(t => t.personId === personId && t.balanceId === balanceId && t.type === 'borrow_in').length;
+        person.borrowedByBalance.push({
+          balanceId,
+          balanceCode: bal.code,
+          balanceName: bal.name,
+          amount: activeAmt,
+          txCount: borrowTxCount
+        });
+      });
+
+      // 4. Finalize Balance Totals, Splits Sum, Unallocated, and Global Invariants
+      let bankInHand = 0;
+      let totalLentOut = 0;
+      let totalBorrowed = 0;
+      let custodyAndBorrowedTotal = 0;
+
+      Object.values(balancesMap).forEach(bal => {
+        bal.totalValue = round2(bal.inHand + bal.lentOut);
+        bal.splitsSum = round2(bal.computedSplits.reduce((s, sp) => s + sp.currentAmount, 0));
+        bal.unallocated = round2(bal.totalValue - bal.splitsSum);
+
+        bankInHand = round2(bankInHand + bal.inHand);
+        totalLentOut = round2(totalLentOut + bal.lentOut);
+
+        if (bal.isCustody) {
+          custodyAndBorrowedTotal = round2(custodyAndBorrowedTotal + bal.totalValue);
+        } else if (bal.borrowedIn > 0) {
+          custodyAndBorrowedTotal = round2(custodyAndBorrowedTotal + bal.borrowedIn);
+        }
+      });
+
+      Object.values(peopleMap).forEach(p => {
+        totalBorrowed = round2(totalBorrowed + p.totalBorrowedFromThem);
+      });
+
+      const totalPool = round2(bankInHand + totalLentOut);
+      const trueOwnMoney = round2(totalPool - custodyAndBorrowedTotal);
+
+      // Verify mathematical invariant: sum of people lent == sum of balance lentOut
+      const sumPeopleLent = round2(Object.values(peopleMap).reduce((s, p) => s + p.totalLentToThem, 0));
+      const isMathSynced = Math.abs(sumPeopleLent - totalLentOut) < 0.001;
+
+      derived = {
+        balancesMap,
+        peopleMap,
+        lentMatrix,
+        borrowedMatrix,
+        totals: {
+          bankInHand,
+          totalLentOut,
+          totalBorrowed,
+          custodyAndBorrowedTotal,
+          totalPool,
+          trueOwnMoney,
+          isMathSynced
+        }
+      };
+    }
+
+    // ==================== MASTER RENDER PIPELINE ====================
+
+    function renderAll() {
+      recomputeDerivedState();
+      renderTopOverview();
+      renderCombinerSection();
+      renderBalancesList();
+      populatePeopleFormControls();
+      renderActivePeopleDirectory();
+      populateTransactionFormDropdowns();
+      renderTransactionLog();
+    }
+
+    /**
+     * 1. Render Top Overview & Math Sync Badge
+     */
+    function renderTopOverview() {
+      const t = derived.totals;
+
+      document.getElementById('statTotalInHand').textContent = formatINR(t.bankInHand);
+      document.getElementById('statTotalLent').textContent = `+ ${formatINR(t.totalLentOut)}`;
+      document.getElementById('statTotalBorrowed').textContent = formatINR(t.custodyAndBorrowedTotal);
+      document.getElementById('statTrueOwn').textContent = formatINR(t.trueOwnMoney);
+
+      // Active lenders / borrowers subtitles
+      const activeLentPeople = Object.values(derived.peopleMap).filter(p => p.totalLentToThem > 0);
+      const activeBorrowedPeople = Object.values(derived.peopleMap).filter(p => p.totalBorrowedFromThem > 0);
+
+      document.getElementById('statTotalLentSub').textContent = activeLentPeople.length > 0
+        ? `With: ${activeLentPeople.map(p => `${p.name} (${formatINR(p.totalLentToThem)})`).join(', ')}`
+        : '₹0 currently lent out';
+
+      document.getElementById('statTotalBorrowedSub').textContent = activeBorrowedPeople.length > 0
+        ? `From: ${activeBorrowedPeople.map(p => `${p.name} (${formatINR(p.totalBorrowedFromThem)})`).join(', ')}`
+        : (t.custodyAndBorrowedTotal > 0 ? `Includes ${formatINR(t.custodyAndBorrowedTotal)} custody funds` : '₹0 borrowed / custody');
+
+      document.getElementById('globalFormulaBanner').innerHTML = `
+        <span class="text-emerald-600 dark:text-emerald-400 font-bold">${formatINR(t.bankInHand)} <span class="font-sans font-normal text-[11px] opacity-80">(Bank)</span></span>
+        <span class="text-slate-400">+</span>
+        <span class="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/40 border-dashed text-amber-700 dark:text-amber-300 font-bold">
+          ${formatINR(t.totalLentOut)} <span class="font-sans font-normal text-[11px]">(Lent)</span>
+        </span>
+        <span class="text-slate-400">=</span>
+        <span class="text-indigo-600 dark:text-indigo-400 font-extrabold">${formatINR(t.totalPool)} Total Pool</span>
+      `;
+    }
+
+    /**
+     * 2. Render Balance Combiner
+     */
+    function renderCombinerSection() {
+      const container = document.getElementById('combinerCheckboxes');
+      const validIds = new Set(appState.balances.map(b => b.id));
+      appState.selectedForCombiner = appState.selectedForCombiner.filter(id => validIds.has(id));
+
+      if (appState.balances.length === 0) {
+        container.innerHTML = `
+          <div class="w-full py-2 px-3 rounded-xl bg-slate-900/60 border border-dashed border-slate-700 text-xs text-slate-400 flex items-center justify-between">
+            <span>No balances yet. Create Balance A or borrow money below to auto-create one!</span>
+          </div>
+        `;
+        document.getElementById('combinerEquationText').innerHTML = `<span class="text-slate-500 italic">No balances selected</span>`;
+        document.getElementById('combinerInHand').textContent = '₹0';
+        document.getElementById('combinerLent').textContent = '₹0';
+        document.getElementById('combinerTotal').textContent = '₹0';
+        return;
+      }
+
+      container.innerHTML = appState.balances.map(b => {
+        const bal = derived.balancesMap[b.id];
+        const isChecked = appState.selectedForCombiner.includes(b.id);
+
+        return `
+          <button
+            type="button"
+            onclick="toggleBalanceInCombiner('${b.id}')"
+            class="flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left transition-all ${
+              isChecked
+                ? 'bg-indigo-600/35 border-indigo-400 text-white shadow-sm shadow-indigo-500/20'
+                : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+            }"
+          >
+            <div class="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold ${
+              isChecked ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-500'
+            }">
+              ${isChecked ? '<i class="fa-solid fa-check text-[10px]"></i>' : escapeHtml(bal.code)}
+            </div>
+            <div>
+              <div class="text-xs font-bold flex items-center gap-1.5">
+                <span class="font-mono text-indigo-300">[${escapeHtml(bal.code)}]</span>
+                <span>${escapeHtml(bal.name)}</span>
+                ${bal.isCustody ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/30 text-purple-200">Borrowed/Custody</span>' : ''}
+              </div>
+              <div class="text-[11px] font-mono ${isChecked ? 'text-slate-200' : 'text-slate-500'}">
+                ${
+                  bal.lentOut > 0
+                    ? `<span class="text-emerald-300">${formatINR(bal.inHand)}</span> + <span class="text-amber-300">"${formatINR(bal.lentOut)}"</span> = ${formatINR(bal.totalValue)}`
+                    : `${formatINR(bal.totalValue)}`
+                }
+              </div>
+            </div>
+          </button>
+        `;
+      }).join('');
+
+      let selInHand = 0;
+      let selLent = 0;
+      const partsHtml = [];
+
+      appState.balances.forEach(b => {
+        if (appState.selectedForCombiner.includes(b.id)) {
+          const bal = derived.balancesMap[b.id];
+          selInHand = round2(selInHand + bal.inHand);
+          selLent = round2(selLent + bal.lentOut);
+
+          if (bal.lentOut > 0) {
+            partsHtml.push(
+              `<span class="px-2 py-0.5 rounded bg-slate-900 border border-slate-700">
+                <strong class="text-indigo-300">${escapeHtml(bal.code)}:</strong>
+                <span class="text-emerald-400">${formatINR(bal.inHand)}</span>+<span class="text-amber-400">"${formatINR(bal.lentOut)}"</span>
+              </span>`
+            );
+          } else {
+            partsHtml.push(
+              `<span class="px-2 py-0.5 rounded bg-slate-900 border border-slate-700">
+                <strong class="text-indigo-300">${escapeHtml(bal.code)}:</strong>
+                <span class="text-emerald-400">${formatINR(bal.totalValue)}</span>
+              </span>`
+            );
+          }
+        }
+      });
+
+      const selTotal = round2(selInHand + selLent);
+      document.getElementById('combinerEquationText').innerHTML = partsHtml.length > 0
+        ? partsHtml.join(' <span class="text-slate-500 font-bold">+</span> ')
+        : `<span class="text-slate-500 italic">Click any balance chip above to combine amounts.</span>`;
+
+      document.getElementById('combinerInHand').textContent = formatINR(selInHand);
+      document.getElementById('combinerLent').textContent = formatINR(selLent);
+      document.getElementById('combinerTotal').textContent = formatINR(selTotal);
+    }
+
+    function toggleBalanceInCombiner(balanceId) {
+      const idx = appState.selectedForCombiner.indexOf(balanceId);
+      if (idx > -1) appState.selectedForCombiner.splice(idx, 1);
+      else appState.selectedForCombiner.push(balanceId);
+      saveState();
+      renderCombinerSection();
+    }
+
+    function setCombinerPreset(mode) {
+      if (mode === 'all') {
+        appState.selectedForCombiner = appState.balances.map(b => b.id);
+      } else if (mode === 'own') {
+        appState.selectedForCombiner = appState.balances.filter(b => !b.isCustody).map(b => b.id);
+      } else if (mode === 'borrowed') {
+        appState.selectedForCombiner = appState.balances.filter(b => b.isCustody || derived.balancesMap[b.id]?.borrowedIn > 0).map(b => b.id);
+      } else {
+        appState.selectedForCombiner = [];
+      }
+      saveState();
+      renderCombinerSection();
+    }
+
+    /**
+     * 3. Render Main Balances & Subcategory Splits
+     */
+    function renderBalancesList() {
+      const container = document.getElementById('balancesContainer');
+      document.getElementById('balanceCountBadge').textContent = appState.balances.length;
+
+      if (appState.balances.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border-2 border-dashed border-indigo-400/60 dark:border-indigo-500/40 p-6 shadow-sm">
+            <div class="max-w-xl mx-auto space-y-4">
+              <div class="flex items-start gap-3.5">
+                <div class="w-11 h-11 rounded-2xl bg-indigo-600/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center justify-center shrink-0 text-lg">
+                  <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <div>
+                  <h3 class="text-base font-extrabold text-slate-900 dark:text-white">Start Fresh: Create Balance A (or Borrow Directly!)</h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Create your first balance bucket below, OR use the <strong>People Ledger (Borrow)</strong> box on the right—borrowing from someone automatically creates their balance bucket at that moment!
+                  </p>
+                </div>
+              </div>
+
+              <form onsubmit="handleQuickOnboardingCreate(event)" class="bg-slate-50 dark:bg-slate-850 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                  <div class="sm:col-span-2">
+                    <label class="block text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Code</label>
+                    <input type="text" id="onboardCode" value="A" maxlength="4" required class="w-full rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm font-mono font-bold uppercase text-center" />
+                  </div>
+                  <div class="sm:col-span-6">
+                    <label class="block text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Balance Name</label>
+                    <input type="text" id="onboardName" required placeholder="e.g. Monthly Budget" class="w-full rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm font-medium" />
+                  </div>
+                  <div class="sm:col-span-4">
+                    <label class="block text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Initial Deposit (₹)</label>
+                    <input type="number" id="onboardAmount" min="0" step="any" required placeholder="e.g. 10000" class="w-full rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm font-mono font-bold" />
+                  </div>
+                </div>
+                <div class="flex items-center justify-end gap-2 pt-1">
+                  <button type="submit" class="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition">
+                    <i class="fa-solid fa-plus mr-1"></i>Create Balance A
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = appState.balances.map(b => {
+        const bal = derived.balancesMap[b.id];
+        const hasLent = bal.lentOut > 0;
+        const hasBorrowed = bal.borrowedIn > 0;
+
+        // Build Equation Header
+        let equationHtml = '';
+        if (hasLent) {
+          const borrowersText = bal.activeLoansOut.map(l => `${escapeHtml(l.personName)}: ${formatINR(l.amount)}`).join(', ');
+          equationHtml = `
+            <div class="mt-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center justify-between">
+                <span>Live Balance Equation (In-Hand + Lent Out = Total Yours)</span>
+                <span class="text-amber-600 dark:text-amber-400"><i class="fa-solid fa-paper-plane mr-1"></i>Money out with friend</span>
+              </div>
+              <div class="flex flex-wrap items-center gap-2 font-mono">
+                <div class="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300">
+                  <span class="text-sm sm:text-base font-extrabold">${formatINR(bal.inHand)}</span>
+                  <span class="text-[10px] font-sans font-semibold block uppercase opacity-80">In-Hand Now</span>
+                </div>
+                <span class="text-base font-bold text-slate-400">+</span>
+                <div class="px-3 py-1.5 rounded-lg lent-pill-pattern border-2 border-dashed border-amber-500/70 text-amber-800 dark:text-amber-300">
+                  <span class="text-sm sm:text-base font-extrabold">"${formatINR(bal.lentOut)}"</span>
+                  <span class="text-[10px] font-sans font-bold block text-amber-700 dark:text-amber-400">
+                    Out: ${borrowersText}
+                  </span>
+                </div>
+                <span class="text-base font-bold text-slate-400">=</span>
+                <div class="px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-700 dark:text-indigo-300 ml-auto sm:ml-0">
+                  <span class="text-sm sm:text-base font-extrabold">${formatINR(bal.totalValue)}</span>
+                  <span class="text-[10px] font-sans font-semibold block uppercase opacity-80">Total Balance</span>
+                </div>
+              </div>
+            </div>
+          `;
+        } else {
+          equationHtml = `
+            <div class="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-xs bg-slate-50 dark:bg-slate-850 px-3 py-2 rounded-xl border border-slate-200/70 dark:border-slate-800">
+              <span class="text-slate-500 dark:text-slate-400">
+                ${hasBorrowed ? `Includes <strong class="text-purple-600 dark:text-purple-400">${formatINR(bal.borrowedIn)}</strong> borrowed (${bal.activeBorrowsIn.map(x => escapeHtml(x.personName)).join(', ')})` : '100% physically in-hand:'}
+              </span>
+              <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">${formatINR(bal.inHand)} In-Hand</span>
+            </div>
+          `;
+        }
+
+        // Liquidity note if In-Hand < Splits Sum because money is lent out
+        let liquidityNote = '';
+        if (hasLent && bal.inHand < bal.splitsSum) {
+          liquidityNote = `
+            <div class="mt-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-800 dark:text-amber-300">
+              <i class="fa-solid fa-circle-info text-amber-500 mr-1"></i>
+              Splits total <strong>${formatINR(bal.splitsSum)}</strong>; usable cash in-hand is <strong>${formatINR(bal.inHand)}</strong> until <strong>${formatINR(bal.lentOut)}</strong> is returned.
+            </div>
+          `;
+        }
+
+        // Render Splits
+        const splitsHtml = bal.computedSplits.map(split => {
+          const pct = bal.totalValue > 0 ? Math.min(100, Math.round((split.currentAmount / bal.totalValue) * 100)) : 0;
+          return `
+            <div class="p-2.5 rounded-xl bg-slate-50/90 dark:bg-slate-850/90 border border-slate-200/70 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div class="space-y-1 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(split.name)}</span>
+                  <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-400">${pct}%</span>
+                </div>
+                <div class="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <div class="bg-indigo-500 h-full rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between sm:justify-end gap-1.5">
+                <span class="text-sm font-mono font-bold text-slate-900 dark:text-white mr-1">${formatINR(split.currentAmount)}</span>
+
+                <button
+                  type="button"
+                  onclick="prefillTransactionForm('${bal.id}', '${split.id}', 'expense')"
+                  class="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-600 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-500/20 text-[11px] font-semibold transition flex items-center gap-1"
+                  title="Cut UPI expense from ${escapeHtml(split.name)}"
+                >
+                  <i class="fa-solid fa-minus text-[9px]"></i>
+                  <span>Cut</span>
+                </button>
+
+                <button
+                  type="button"
+                  onclick="openSplitModal('${bal.id}', '${split.id}')"
+                  class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition text-xs"
+                  title="Edit Split"
+                >
+                  <i class="fa-solid fa-pen"></i>
+                </button>
+
+                <button
+                  type="button"
+                  onclick="deleteSplit('${bal.id}', '${split.id}')"
+                  class="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition text-xs"
+                  title="Delete Split"
+                >
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // Unallocated Row
+        let unallocHtml = '';
+        if (bal.unallocated > 0) {
+          unallocHtml = `
+            <div class="p-2.5 rounded-xl bg-emerald-500/5 border border-dashed border-emerald-500/30 flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Unallocated Buffer (Free in Balance ${escapeHtml(bal.code)})</span>
+              </div>
+              <span class="text-sm font-mono font-bold text-emerald-700 dark:text-emerald-300">${formatINR(bal.unallocated)}</span>
+            </div>
+          `;
+        } else if (bal.unallocated < 0) {
+          unallocHtml = `
+            <div class="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between text-xs text-rose-700 dark:text-rose-300">
+              <span><i class="fa-solid fa-triangle-exclamation mr-1"></i>Splits exceed total balance by:</span>
+              <span class="font-mono font-bold">${formatINR(Math.abs(bal.unallocated))}</span>
+            </div>
+          `;
+        }
+
+        return `
+          <article class="card-hover bg-white dark:bg-slate-900 rounded-2xl border ${
+            hasLent
+              ? 'border-amber-400/60 dark:border-amber-500/40'
+              : (bal.isCustody ? 'border-purple-400/50 dark:border-purple-500/35' : 'border-slate-200 dark:border-slate-800')
+          } p-4 sm:p-5 shadow-sm">
+            <!-- Top Row -->
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl ${
+                  bal.isCustody
+                    ? 'bg-purple-600/15 text-purple-600 dark:text-purple-300 border border-purple-500/30'
+                    : 'bg-indigo-600/15 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30'
+                } flex flex-col items-center justify-center font-mono font-extrabold text-base shrink-0">
+                  <span class="text-[9px] font-sans font-semibold uppercase tracking-tighter opacity-70">BAL</span>
+                  <span class="leading-none">${escapeHtml(bal.code)}</span>
+                </div>
+
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="text-base font-bold text-slate-900 dark:text-white">${escapeHtml(bal.name)}</h3>
+                    ${
+                      bal.isCustody
+                        ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                            <i class="fa-solid fa-user-clock mr-1"></i>Borrowed / Custody
+                          </span>`
+                        : ''
+                    }
+                  </div>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    ${bal.computedSplits.length} Splits (${formatINR(bal.splitsSum)}) • Unallocated: ${formatINR(Math.max(0, bal.unallocated))}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onclick="openSplitModal('${bal.id}')"
+                  class="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-slate-700 dark:text-slate-300 text-xs font-semibold transition flex items-center gap-1"
+                >
+                  <i class="fa-solid fa-plus text-[10px]"></i>
+                  <span>Split</span>
+                </button>
+
+                <button
+                  type="button"
+                  onclick="prefillLendFromBalance('${bal.id}')"
+                  class="px-2.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-semibold transition flex items-center gap-1"
+                  title="Lend money out from Balance ${escapeHtml(bal.code)}"
+                >
+                  <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                  <span>Lend</span>
+                </button>
+
+                <button
+                  type="button"
+                  onclick="openEditBalanceModal('${bal.id}')"
+                  class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-xs"
+                  title="Edit Balance ${escapeHtml(bal.code)}"
+                >
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+
+                <button
+                  type="button"
+                  onclick="deleteBalance('${bal.id}')"
+                  class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition text-xs"
+                  title="Delete Balance ${escapeHtml(bal.code)} and all its logs"
+                >
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+
+            ${equationHtml}
+            ${liquidityNote}
+
+            <!-- Splits List -->
+            <div class="mt-4 space-y-2">
+              ${splitsHtml}
+              ${unallocHtml}
+
+              <!-- Inline Quick Split Adder -->
+              <form onsubmit="handleInlineSplitAdd(event, '${bal.id}')" class="pt-2 mt-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap sm:flex-nowrap items-center gap-2">
+                <input
+                  type="text"
+                  id="inlineSplitName_${bal.id}"
+                  required
+                  placeholder="+ Add subcategory (e.g. Rent, Travel)"
+                  class="flex-1 min-w-[130px] rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <div class="relative w-28">
+                  <span class="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono text-xs text-slate-400">₹</span>
+                  <input
+                    type="number"
+                    id="inlineSplitAmt_${bal.id}"
+                    min="0.01"
+                    step="any"
+                    required
+                    placeholder="Amount"
+                    class="w-full rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 pl-6 pr-2 py-1.5 text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <label class="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 cursor-pointer select-none px-1" title="Check to also deposit this amount into Balance ${escapeHtml(bal.code)}'s total">
+                  <input type="checkbox" id="inlineSplitGrow_${bal.id}" class="rounded text-indigo-600 focus:ring-indigo-500" />
+                  <span>+Add to Bal</span>
+                </label>
+                <button type="submit" class="px-3 py-1.5 rounded-xl bg-indigo-600/15 hover:bg-indigo-600 text-indigo-600 dark:text-indigo-300 hover:text-white text-xs font-bold transition shrink-0">
+                  Add Split
+                </button>
+              </form>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    // ==================== PEOPLE LEDGER: SMART COMBOBOX, AUTO-ACCOUNT BORROW, & ORDERED DIRECTORY ====================
+
+    function setPeopleFormMode(mode) {
+      document.getElementById('peopleFormMode').value = mode;
+      const borrowBtn = document.getElementById('peopleModeBorrowBtn');
+      const lendBtn = document.getElementById('peopleModeLendBtn');
+      const banner = document.getElementById('peopleFormBanner');
+      const submitBtn = document.getElementById('peopleSubmitBtn');
+      const preview = document.getElementById('peopleFormPreview');
+
+      if (mode === 'borrow') {
+        borrowBtn.className = 'px-2.5 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white shadow-xs transition';
+        lendBtn.className = 'px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition';
+        banner.className = 'flex items-center justify-between text-xs font-bold text-purple-700 dark:text-purple-300';
+        banner.innerHTML = `
+          <span><i class="fa-solid fa-arrow-down-left mr-1.5"></i>Receive / Borrow Money from Someone</span>
+          <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-purple-500/15 text-purple-600 dark:text-purple-300">Auto-Creates Account</span>
+        `;
+        preview.className = 'text-[11px] font-mono rounded-xl px-3 py-2 bg-purple-500/10 border border-purple-500/30 text-purple-800 dark:text-purple-200';
+        submitBtn.className = 'w-full py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-2';
+        submitBtn.innerHTML = `<i class="fa-solid fa-bolt"></i><span>Borrow Money &amp; Auto-Create/Update Account</span>`;
+      } else {
+        lendBtn.className = 'px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 shadow-xs transition';
+        borrowBtn.className = 'px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition';
+        banner.className = 'flex items-center justify-between text-xs font-bold text-amber-700 dark:text-amber-300';
+        banner.innerHTML = `
+          <span><i class="fa-solid fa-paper-plane mr-1.5"></i>Lend Money Out to Someone</span>
+          <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300">Keeps Total Intact</span>
+        `;
+        preview.className = 'text-[11px] font-mono rounded-xl px-3 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200';
+        submitBtn.className = 'w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-2';
+        submitBtn.innerHTML = `<i class="fa-solid fa-paper-plane"></i><span>Send &amp; Mark as "+ Lent Out" on Balance</span>`;
+      }
+
+      populatePeopleFormControls();
+    }
+
+    function populatePeopleFormControls() {
+      const mode = document.getElementById('peopleFormMode').value;
+      const balSelect = document.getElementById('peopleBalanceSelect');
+      const labelEl = document.getElementById('peopleBalanceLabel');
+      const prevVal = balSelect.value;
+
+      if (mode === 'borrow') {
+        labelEl.textContent = 'Where to Put Borrowed Cash';
+        const options = [
+          `<option value="__AUTO_PERSON_ACCOUNT__">✨ Auto-Create / Reuse Person's Custody Balance</option>`
+        ];
+        appState.balances.forEach(b => {
+          const bal = derived.balancesMap[b.id];
+          options.push(`<option value="${b.id}">Add into [${escapeHtml(b.code)}] ${escapeHtml(b.name)} (${formatINR(bal.inHand)})</option>`);
+        });
+        balSelect.innerHTML = options.join('');
+        if (prevVal && (prevVal === '__AUTO_PERSON_ACCOUNT__' || appState.balances.some(b => b.id === prevVal))) {
+          balSelect.value = prevVal;
+        } else {
+          balSelect.value = '__AUTO_PERSON_ACCOUNT__';
+        }
+      } else {
+        labelEl.textContent = 'Deduct Physical Cash From';
+        if (appState.balances.length === 0) {
+          balSelect.innerHTML = `<option value="">-- Create a balance first to lend from --</option>`;
+        } else {
+          balSelect.innerHTML = appState.balances.map(b => {
+            const bal = derived.balancesMap[b.id];
+            return `<option value="${b.id}">[${escapeHtml(b.code)}] ${escapeHtml(b.name)} (In-Hand: ${formatINR(bal.inHand)})</option>`;
+          }).join('');
+          if (prevVal && appState.balances.some(b => b.id === prevVal)) {
+            balSelect.value = prevVal;
+          }
+        }
+      }
+
+      filterPersonDropdown();
+      updatePeopleFormPreview();
+    }
+
+    /**
+     * Smart Person Dropdown: Shows Active People first (ordered by amount), then settled people, plus "New Person" option
+     */
+    function openPersonDropdown() {
+      filterPersonDropdown();
+      document.getElementById('personDropdownMenu').classList.remove('hidden');
+    }
+
+    function togglePersonDropdown() {
+      const menu = document.getElementById('personDropdownMenu');
+      if (menu.classList.contains('hidden')) {
+        openPersonDropdown();
+      } else {
+        menu.classList.add('hidden');
+      }
+    }
+
+    function selectPersonFromDropdown(name) {
+      document.getElementById('personNameInput').value = name;
+      document.getElementById('personDropdownMenu').classList.add('hidden');
+      updatePeopleFormPreview();
+    }
+
+    function filterPersonDropdown() {
+      const menu = document.getElementById('personDropdownMenu');
+      const query = (document.getElementById('personNameInput')?.value || '').trim().toLowerCase();
+      const allPeople = Object.values(derived.peopleMap);
+
+      // Sort: Active people first by total active amount descending, then settled alphabetically
+      allPeople.sort((a, b) => {
+        const aActive = a.totalBorrowedFromThem + a.totalLentToThem;
+        const bActive = b.totalBorrowedFromThem + b.totalLentToThem;
+        if (bActive !== aActive) return bActive - aActive;
+        return a.name.localeCompare(b.name);
+      });
+
+      const matching = allPeople.filter(p => p.name.toLowerCase().includes(query));
+      const exactMatch = allPeople.some(p => p.name.toLowerCase() === query);
+
+      let itemsHtml = '';
+
+      if (matching.length > 0) {
+        itemsHtml += matching.map(p => {
+          const badges = [];
+          if (p.totalBorrowedFromThem > 0) {
+            badges.push(`<span class="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-600 dark:text-purple-300 font-mono text-[10px]">Borrowed: ${formatINR(p.totalBorrowedFromThem)}</span>`);
+          }
+          if (p.totalLentToThem > 0) {
+            badges.push(`<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-300 font-mono text-[10px]">Holding: ${formatINR(p.totalLentToThem)}</span>`);
+          }
+          if (badges.length === 0) {
+            badges.push(`<span class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 text-[10px]">Settled (₹0)</span>`);
+          }
+
+          return `
+            <button
+              type="button"
+              onclick="selectPersonFromDropdown('${escapeHtml(p.name)}')"
+              class="w-full px-3 py-2 text-left hover:bg-indigo-50 dark:hover:bg-slate-700/70 transition flex items-center justify-between gap-2"
+            >
+              <span class="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                <i class="fa-solid fa-user text-slate-400 text-[10px]"></i>
+                <span>${escapeHtml(p.name)}</span>
+              </span>
+              <div class="flex items-center gap-1">${badges.join('')}</div>
+            </button>
+          `;
+        }).join('');
+      }
+
+      if (query && !exactMatch) {
+        const displayRaw = document.getElementById('personNameInput').value.trim();
+        itemsHtml += `
+          <button
+            type="button"
+            onclick="selectPersonFromDropdown('${escapeHtml(displayRaw)}')"
+            class="w-full px-3 py-2 text-left bg-indigo-50/50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center justify-between"
+          >
+            <span><i class="fa-solid fa-user-plus mr-1.5"></i>Create New Person: "${escapeHtml(displayRaw)}"</span>
+            <span class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-500/20">New</span>
+          </button>
+        `;
+      }
+
+      if (!itemsHtml) {
+        itemsHtml = `<div class="px-3 py-2.5 text-xs text-slate-400 italic">Type any person's name to create &amp; track them automatically.</div>`;
+      }
+
+      menu.innerHTML = itemsHtml;
+    }
+
+    // Close person dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      const container = document.getElementById('personComboboxContainer');
+      const menu = document.getElementById('personDropdownMenu');
+      if (container && menu && !container.contains(e.target)) {
+        menu.classList.add('hidden');
+      }
+    });
+
+    function getNextAvailableBalanceCode() {
+      const existing = new Set(appState.balances.map(b => b.code.toUpperCase()));
+      for (let c = 65; c <= 90; c++) {
+        const letter = String.fromCharCode(c);
+        if (!existing.has(letter)) return letter;
+      }
+      return 'B' + (appState.balances.length + 1);
+    }
+
+    function updatePeopleFormPreview() {
+      const mode = document.getElementById('peopleFormMode').value;
+      const rawName = (document.getElementById('personNameInput')?.value || '').trim() || 'Person';
+      const amt = round2(document.getElementById('peopleAmountInput')?.value || 0);
+      const balId = document.getElementById('peopleBalanceSelect')?.value;
+      const previewEl = document.getElementById('peopleFormPreview');
+
+      const existingPerson = Object.values(derived.peopleMap).find(p => p.name.toLowerCase() === rawName.toLowerCase());
+
+      if (mode === 'borrow') {
+        const currentOwed = existingPerson ? existingPerson.totalBorrowedFromThem : 0;
+        const newOwed = round2(currentOwed + amt);
+
+        if (balId === '__AUTO_PERSON_ACCOUNT__') {
+          const existingAutoBal = existingPerson
+            ? appState.balances.find(b => b.autoCreatedForPersonId === existingPerson.id || b.name.toLowerCase().includes(rawName.toLowerCase()))
+            : null;
+
+          if (existingAutoBal) {
+            const dBal = derived.balancesMap[existingAutoBal.id];
+            previewEl.innerHTML = `
+              <div>✓ Adds <strong>${formatINR(amt)}</strong> into existing <strong>Balance ${escapeHtml(existingAutoBal.code)} (${escapeHtml(existingAutoBal.name)})</strong>: ${formatINR(dBal.inHand)} → <strong>${formatINR(round2(dBal.inHand + amt))}</strong></div>
+              <div class="mt-0.5">✓ ${escapeHtml(rawName)}'s Total To Pay Back: <strong>${formatINR(newOwed)}</strong></div>
+            `;
+          } else {
+            const nextCode = getNextAvailableBalanceCode();
+            previewEl.innerHTML = `
+              <div>✨ Auto-creates <strong>Balance ${nextCode}: ${escapeHtml(rawName)} (Borrowed)</strong> with <strong>${formatINR(amt)}</strong> In-Hand</div>
+              <div class="mt-0.5">✓ Lists <strong>${escapeHtml(rawName)} (${formatINR(newOwed)})</strong> in Active People To Give Back</div>
+            `;
+          }
+        } else {
+          const dBal = derived.balancesMap[balId];
+          if (dBal) {
+            previewEl.innerHTML = `
+              <div>✓ Deposits <strong>${formatINR(amt)}</strong> into <strong>Balance ${escapeHtml(dBal.code)}</strong> (${formatINR(dBal.inHand)} → <strong>${formatINR(round2(dBal.inHand + amt))}</strong>)</div>
+              <div class="mt-0.5">✓ ${escapeHtml(rawName)}'s Total To Pay Back: <strong>${formatINR(newOwed)}</strong></div>
+            `;
+          }
+        }
+      } else {
+        // Lend Mode
+        const dBal = derived.balancesMap[balId];
+        if (!dBal) {
+          previewEl.innerHTML = `<span>Create a Balance first before lending money out.</span>`;
+          return;
+        }
+        if (amt > dBal.inHand) {
+          previewEl.innerHTML = `<span class="text-rose-600 dark:text-rose-400 font-bold">⚠️ Amount (${formatINR(amt)}) exceeds Balance ${escapeHtml(dBal.code)}'s physical In-Hand cash (${formatINR(dBal.inHand)})!</span>`;
+          return;
+        }
+        const afterInHand = round2(dBal.inHand - amt);
+        const afterLent = round2(dBal.lentOut + amt);
+        previewEl.innerHTML = `
+          <div>✓ Balance ${escapeHtml(dBal.code)} becomes: <strong>${formatINR(afterInHand)} In-Hand + "${formatINR(afterLent)}" = ${formatINR(dBal.totalValue)} Total</strong></div>
+          <div class="mt-0.5">✓ ${escapeHtml(rawName)}'s Total Holding: <strong>${formatINR(round2((existingPerson ? existingPerson.totalLentToThem : 0) + amt))}</strong></div>
+        `;
+      }
+    }
+
+    function handlePeopleFormSubmit(e) {
+      e.preventDefault();
+      const mode = document.getElementById('peopleFormMode').value;
+      const rawName = document.getElementById('personNameInput').value.trim();
+      const amount = round2(document.getElementById('peopleAmountInput').value);
+      const balChoice = document.getElementById('peopleBalanceSelect').value;
+      const note = document.getElementById('peopleNoteInput').value.trim();
+
+      if (!rawName || amount <= 0) {
+        showToast('Please enter a valid person name and amount.', 'error');
+        return;
+      }
+
+      // 1. Find or create Person in appState.people
+      let person = appState.people.find(p => p.name.toLowerCase() === rawName.toLowerCase());
+      if (!person) {
+        person = {
+          id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          name: rawName
+        };
+        appState.people.push(person);
+      }
+
+      if (mode === 'borrow') {
+        let targetBalance = null;
+
+        if (balChoice === '__AUTO_PERSON_ACCOUNT__') {
+          // Check if person already has a linked custody balance
+          targetBalance = appState.balances.find(
+            b => b.autoCreatedForPersonId === person.id ||
+                 (b.isCustody && b.name.toLowerCase().includes(person.name.toLowerCase()))
+          );
+
+          if (!targetBalance) {
+            const newCode = getNextAvailableBalanceCode();
+            targetBalance = {
+              id: 'bal_' + Date.now(),
+              code: newCode,
+              name: `${person.name} (Borrowed)`,
+              isCustody: true,
+              autoCreatedForPersonId: person.id,
+              splits: []
+            };
+            appState.balances.push(targetBalance);
+          }
+        } else {
+          targetBalance = appState.balances.find(b => b.id === balChoice);
+        }
+
+        if (!targetBalance) {
+          showToast('Could not resolve target balance.', 'error');
+          return;
+        }
+
+        appState.transactions.push({
+          id: 'tx_' + Date.now(),
+          type: 'borrow_in',
+          balanceId: targetBalance.id,
+          splitId: null,
+          personId: person.id,
+          amount,
+          isInitial: false,
+          note: note || `Borrowed from ${person.name}`,
+          timestamp: getCurrentFormattedTime(),
+          createdAt: Date.now()
+        });
+
+        document.getElementById('peopleAmountInput').value = '';
+        document.getElementById('peopleNoteInput').value = '';
+        saveState();
+        renderAll();
+        showToast(`Borrowed ${formatINR(amount)} from ${person.name} (Synced with Balance ${targetBalance.code})!`, 'success');
+
+      } else {
+        // LEND MODE
+        const targetBalance = appState.balances.find(b => b.id === balChoice);
+        const dBal = derived.balancesMap[balChoice];
+        if (!targetBalance || !dBal) {
+          showToast('Please create or select a valid Balance to lend from.', 'error');
+          return;
+        }
+
+        if (amount > dBal.inHand) {
+          showToast(`Balance ${dBal.code} only has ${formatINR(dBal.inHand)} physically In-Hand right now.`, 'error');
+          return;
+        }
+
+        appState.transactions.push({
+          id: 'tx_' + Date.now(),
+          type: 'lend_out',
+          balanceId: targetBalance.id,
+          splitId: null,
+          personId: person.id,
+          amount,
+          isInitial: false,
+          note: note || `Lent to ${person.name} from Balance ${targetBalance.code}`,
+          timestamp: getCurrentFormattedTime(),
+          createdAt: Date.now()
+        });
+
+        document.getElementById('peopleAmountInput').value = '';
+        document.getElementById('peopleNoteInput').value = '';
+        saveState();
+        renderAll();
+        showToast(`Lent ${formatINR(amount)} to ${person.name} from Balance ${targetBalance.code}!`, 'success');
+      }
+    }
+
+    /**
+     * Render Active People Directory (Strictly flat, properly closed HTML, grouped by Person & sorted by highest active amount)
+     */
+    function renderActivePeopleDirectory() {
+      const borrowedListEl = document.getElementById('activeBorrowedPeopleList');
+      const lentListEl = document.getElementById('activeLentPeopleList');
+      const settledSectionEl = document.getElementById('settledPeopleSection');
+      const settledListEl = document.getElementById('settledPeopleList');
+      const toggleSettledBtn = document.getElementById('toggleSettledBtn');
+
+      const allPeople = Object.values(derived.peopleMap);
+
+      // 1. Active Borrowed (We owe them > 0), sorted descending
+      const activeBorrowed = allPeople
+        .filter(p => p.totalBorrowedFromThem > 0)
+        .sort((a, b) => b.totalBorrowedFromThem - a.totalBorrowedFromThem);
+
+      // 2. Active Lent Out (They hold our money > 0), sorted descending
+      const activeLent = allPeople
+        .filter(p => p.totalLentToThem > 0)
+        .sort((a, b) => b.totalLentToThem - a.totalLentToThem);
+
+      // 3. Settled People (0 borrowed and 0 lent)
+      const settledPeople = allPeople.filter(p => p.totalBorrowedFromThem === 0 && p.totalLentToThem === 0);
+
+      document.getElementById('activeBorrowersCountBadge').textContent = `${activeBorrowed.length} Active`;
+      document.getElementById('activeLendersCountBadge').textContent = `${activeLent.length} Active`;
+      toggleSettledBtn.textContent = `${showSettledPeople ? 'Hide' : 'Show'} Settled (${settledPeople.length})`;
+
+      // Render Active Borrowed List
+      if (activeBorrowed.length === 0) {
+        borrowedListEl.innerHTML = `
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-dashed border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400">
+            No active borrowed money to pay back.
+          </div>
+        `;
+      } else {
+        borrowedListEl.innerHTML = activeBorrowed.map(person => {
+          const breakdownBadges = person.borrowedByBalance.map(item =>
+            `<span class="px-2 py-0.5 rounded bg-purple-500/15 border border-purple-500/30 text-[10px] font-mono text-purple-800 dark:text-purple-200">
+              In Bal ${escapeHtml(item.balanceCode)}: ${formatINR(item.amount)}${item.txCount > 1 ? ` (${item.txCount}x)` : ''}
+            </span>`
+          ).join('');
+
+          return `
+            <div class="p-3 rounded-xl borrowed-pill-pattern border border-purple-400/60 dark:border-purple-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div class="space-y-1 min-w-0">
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-6 rounded-full bg-purple-600 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+                    ${escapeHtml(person.name.charAt(0).toUpperCase())}
+                  </div>
+                  <span class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white truncate">${escapeHtml(person.name)}</span>
+                  <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300">To Give Back</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-1.5">
+                  ${breakdownBadges}
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between sm:justify-end gap-2 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-purple-300/30 dark:border-purple-800/40">
+                <div class="text-left sm:text-right mr-1">
+                  <div class="text-sm font-mono font-extrabold text-purple-700 dark:text-purple-300">${formatINR(person.totalBorrowedFromThem)}</div>
+                  <div class="text-[10px] text-purple-600/80 dark:text-purple-400/80">You Owe</div>
+                </div>
+
+                <button
+                  type="button"
+                  onclick="openSettlePersonModal('${person.id}', 'pay_borrowed')"
+                  class="px-2.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-xs transition flex items-center gap-1"
+                  title="Send / Pay back money to ${escapeHtml(person.name)}"
+                >
+                  <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                  <span>Pay Back</span>
+                </button>
+
+                <button
+                  type="button"
+                  onclick="quickPrefillPersonAction('${escapeHtml(person.name)}', 'borrow')"
+                  class="p-1.5 rounded-lg bg-purple-500/15 hover:bg-purple-500/30 text-purple-700 dark:text-purple-300 text-xs transition"
+                  title="Borrow more from ${escapeHtml(person.name)}"
+                >
+                  <i class="fa-solid fa-plus"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Render Active Lent Out List (Fixed the unclosed div/span bug completely!)
+      if (activeLent.length === 0) {
+        lentListEl.innerHTML = `
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-dashed border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400">
+            No active money lent out right now.
+          </div>
+        `;
+      } else {
+        lentListEl.innerHTML = activeLent.map(person => {
+          const breakdownBadges = person.lentByBalance.map(item =>
+            `<span class="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-[10px] font-mono text-amber-900 dark:text-amber-200">
+              From Bal ${escapeHtml(item.balanceCode)}: ${formatINR(item.amount)}${item.txCount > 1 ? ` (${item.txCount}x)` : ''}
+            </span>`
+          ).join('');
+
+          return `
+            <div class="p-3 rounded-xl lent-pill-pattern border border-amber-400/60 dark:border-amber-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div class="space-y-1 min-w-0">
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-6 rounded-full bg-amber-500 text-slate-950 text-[11px] font-bold flex items-center justify-center shrink-0">
+                    ${escapeHtml(person.name.charAt(0).toUpperCase())}
+                  </div>
+                  <span class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white truncate">${escapeHtml(person.name)}</span>
+                  <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-300">Holding Yours</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-1.5">
+                  ${breakdownBadges}
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between sm:justify-end gap-2 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-amber-400/30 dark:border-amber-800/40">
+                <div class="text-left sm:text-right mr-1">
+                  <div class="text-sm font-mono font-extrabold text-amber-700 dark:text-amber-300">+ ${formatINR(person.totalLentToThem)}</div>
+                  <div class="text-[10px] text-amber-700/80 dark:text-amber-400/80">To Receive</div>
+                </div>
+
+                <button
+                  type="button"
+                  onclick="openSettlePersonModal('${person.id}', 'receive_lent')"
+                  class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs transition flex items-center gap-1"
+                  title="Receive repayment from ${escapeHtml(person.name)}"
+                >
+                  <i class="fa-solid fa-rotate-left text-[10px]"></i>
+                  <span>Receive Back</span>
+                </button>
+
+                <button
+                  type="button"
+                  onclick="quickPrefillPersonAction('${escapeHtml(person.name)}', 'lend')"
+                  class="p-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/30 text-amber-800 dark:text-amber-300 text-xs transition"
+                  title="Lend more to ${escapeHtml(person.name)}"
+                >
+                  <i class="fa-solid fa-plus"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Settled People List
+      if (showSettledPeople) {
+        settledSectionEl.classList.remove('hidden');
+        if (settledPeople.length === 0) {
+          settledListEl.innerHTML = `<div class="text-xs text-slate-400 italic">No settled people yet.</div>`;
+        } else {
+          settledListEl.innerHTML = settledPeople.map(p => `
+            <div class="px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-850 border border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs">
+              <span class="font-semibold text-slate-600 dark:text-slate-300">${escapeHtml(p.name)} <span class="text-[10px] text-slate-400 font-normal">(Settled ₹0)</span></span>
+              <div class="flex items-center gap-1.5">
+                <button onclick="quickPrefillPersonAction('${escapeHtml(p.name)}', 'borrow')" class="text-[10px] px-2 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-300 font-semibold">Borrow</button>
+                <button onclick="quickPrefillPersonAction('${escapeHtml(p.name)}', 'lend')" class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-300 font-semibold">Lend</button>
+              </div>
+            </div>
+          `).join('');
+        }
+      } else {
+        settledSectionEl.classList.add('hidden');
+      }
+    }
+
+    function toggleShowSettledPeople() {
+      showSettledPeople = !showSettledPeople;
+      renderActivePeopleDirectory();
+    }
+
+    function quickPrefillPersonAction(personName, mode) {
+      setPeopleFormMode(mode);
+      document.getElementById('personNameInput').value = personName;
+      updatePeopleFormPreview();
+      const amtInput = document.getElementById('peopleAmountInput');
+      amtInput.focus();
+      amtInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function prefillLendFromBalance(balanceId) {
+      setPeopleFormMode('lend');
+      document.getElementById('peopleBalanceSelect').value = balanceId;
+      updatePeopleFormPreview();
+      const nameInput = document.getElementById('personNameInput');
+      nameInput.focus();
+      nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // ==================== SETTLE PERSON MODAL (RECEIVE BACK OR PAY BACK) ====================
+
+    function openSettlePersonModal(personId, direction) {
+      const person = derived.peopleMap[personId];
+      if (!person) return;
+
+      document.getElementById('settleModalPersonId').value = personId;
+      document.getElementById('settleModalDirection').value = direction;
+      document.getElementById('settleModalNote').value = '';
+
+      const balSelect = document.getElementById('settleModalBalanceSelect');
+      const cleanupWrap = document.getElementById('settleAutoCleanupWrap');
+      const submitBtn = document.getElementById('settleModalSubmitBtn');
+
+      if (direction === 'receive_lent') {
+        document.getElementById('settleModalTitle').textContent = `Receive Money Back from ${person.name}`;
+        document.getElementById('settleModalSubtitle').textContent = `${person.name} is currently holding ${formatINR(person.totalLentToThem)} of your money.`;
+        document.getElementById('settleModalBalanceLabel').textContent = 'Return Cash Into Balance Bucket';
+        cleanupWrap.classList.add('hidden');
+        cleanupWrap.classList.remove('flex');
+        submitBtn.className = 'px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white';
+        submitBtn.textContent = 'Confirm Received Back';
+
+        balSelect.innerHTML = person.lentByBalance.map(item =>
+          `<option value="${item.balanceId}" data-max="${item.amount}">[${escapeHtml(item.balanceCode)}] ${escapeHtml(item.balanceName)} (Lent from here: ${formatINR(item.amount)})</option>`
+        ).join('');
+      } else {
+        document.getElementById('settleModalTitle').textContent = `Pay Back ${person.name}`;
+        document.getElementById('settleModalSubtitle').textContent = `You currently owe ${person.name} ${formatINR(person.totalBorrowedFromThem)}.`;
+        document.getElementById('settleModalBalanceLabel').textContent = 'Deduct Repayment From Balance Bucket';
+        cleanupWrap.classList.remove('hidden');
+        cleanupWrap.classList.add('flex');
+        submitBtn.className = 'px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white';
+        submitBtn.textContent = 'Confirm Paid Back';
+
+        balSelect.innerHTML = person.borrowedByBalance.map(item => {
+          const dBal = derived.balancesMap[item.balanceId];
+          return `<option value="${item.balanceId}" data-max="${item.amount}">[${escapeHtml(item.balanceCode)}] ${escapeHtml(item.balanceName)} (Borrowed: ${formatINR(item.amount)} | In-Hand: ${formatINR(dBal ? dBal.inHand : 0)})</option>`;
+        }).join('');
+      }
+
+      updateSettleModalMax();
+      const modal = document.getElementById('settlePersonModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function updateSettleModalMax() {
+      const sel = document.getElementById('settleModalBalanceSelect');
+      const opt = sel.options[sel.selectedIndex];
+      if (!opt) return;
+      const maxAmt = round2(opt.getAttribute('data-max') || 0);
+      const amtInput = document.getElementById('settleModalAmount');
+      amtInput.value = maxAmt;
+      amtInput.max = maxAmt;
+    }
+
+    function fillFullSettleAmount() {
+      updateSettleModalMax();
+    }
+
+    function closeSettlePersonModal() {
+      const modal = document.getElementById('settlePersonModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function handleConfirmSettlePerson(e) {
+      e.preventDefault();
+      const personId = document.getElementById('settleModalPersonId').value;
+      const direction = document.getElementById('settleModalDirection').value;
+      const balanceId = document.getElementById('settleModalBalanceSelect').value;
+      const amount = round2(document.getElementById('settleModalAmount').value);
+      const note = document.getElementById('settleModalNote').value.trim();
+      const autoCleanup = document.getElementById('settleAutoCleanupCheck').checked;
+
+      const person = derived.peopleMap[personId];
+      const dBal = derived.balancesMap[balanceId];
+      if (!person || !dBal || amount <= 0) return;
+
+      if (direction === 'receive_lent') {
+        const activeOnBal = round2(derived.lentMatrix[`${personId}__${balanceId}`] || 0);
+        if (amount > activeOnBal) {
+          showToast(`Amount exceeds the ${formatINR(activeOnBal)} lent from Balance ${dBal.code}.`, 'error');
+          return;
+        }
+
+        appState.transactions.push({
+          id: 'tx_' + Date.now(),
+          type: 'lend_repay',
+          balanceId,
+          splitId: null,
+          personId,
+          amount,
+          isInitial: false,
+          note: note || `Received back from ${person.name}`,
+          timestamp: getCurrentFormattedTime(),
+          createdAt: Date.now()
+        });
+
+        closeSettlePersonModal();
+        saveState();
+        renderAll();
+        showToast(`Received ${formatINR(amount)} back from ${person.name} into Balance ${dBal.code}!`, 'success');
+
+      } else {
+        // pay_borrowed
+        const activeBorrowOnBal = round2(derived.borrowedMatrix[`${personId}__${balanceId}`] || 0);
+        if (amount > activeBorrowOnBal) {
+          showToast(`You only owe ${formatINR(activeBorrowOnBal)} on Balance ${dBal.code}.`, 'error');
+          return;
+        }
+        if (amount > dBal.inHand) {
+          showToast(`Balance ${dBal.code} only has ${formatINR(dBal.inHand)} In-Hand right now.`, 'error');
+          return;
+        }
+
+        appState.transactions.push({
+          id: 'tx_' + Date.now(),
+          type: 'borrow_repay',
+          balanceId,
+          splitId: null,
+          personId,
+          amount,
+          isInitial: false,
+          note: note || `Paid back ${person.name}`,
+          timestamp: getCurrentFormattedTime(),
+          createdAt: Date.now()
+        });
+
+        recomputeDerivedState();
+        const updatedBal = derived.balancesMap[balanceId];
+
+        // If autoCleanup is checked and this was an auto-created custody balance that is now ₹0
+        if (autoCleanup && updatedBal && updatedBal.isCustody && updatedBal.totalValue === 0 && updatedBal.borrowedIn === 0) {
+          appState.balances = appState.balances.filter(b => b.id !== balanceId);
+          appState.selectedForCombiner = appState.selectedForCombiner.filter(id => id !== balanceId);
+        }
+
+        closeSettlePersonModal();
+        saveState();
+        renderAll();
+        showToast(`Paid back ${formatINR(amount)} to ${person.name}!`, 'success');
+      }
+    }
+
+    // ==================== UPI EXPENSE / DEPOSIT TRANSACTION BOX ====================
+
+    function setTxMode(mode) {
+      document.getElementById('txModeInput').value = mode;
+      const expBtn = document.getElementById('txModeExpenseBtn');
+      const depBtn = document.getElementById('txModeDepositBtn');
+      const submitBtn = document.getElementById('txSubmitBtn');
+
+      if (mode === 'expense') {
+        expBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-600 text-white shadow-xs transition';
+        depBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition';
+        submitBtn.className = 'w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-2';
+        submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i><span>Deduct from Subcategory &amp; Update Balance</span>`;
+      } else {
+        depBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-xs transition';
+        expBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition';
+        submitBtn.className = 'w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-2';
+        submitBtn.innerHTML = `<i class="fa-solid fa-plus-circle"></i><span>Deposit Money &amp; Update Balance</span>`;
+      }
+      updateTxLivePreview();
+    }
+
+    function populateTransactionFormDropdowns() {
+      const balSelect = document.getElementById('txBalanceSelect');
+      const splitSelect = document.getElementById('txSplitSelect');
+      const previewEl = document.getElementById('txLivePreview');
+      const currentVal = balSelect.value;
+
+      if (appState.balances.length === 0) {
+        balSelect.innerHTML = `<option value="">-- Create a balance first --</option>`;
+        splitSelect.innerHTML = `<option value="">-- No subcategories --</option>`;
+        previewEl.innerHTML = `<div class="text-slate-400 italic">Create a balance first to record UPI transactions.</div>`;
+        return;
+      }
+
+      balSelect.innerHTML = appState.balances.map(b => {
+        const bal = derived.balancesMap[b.id];
+        return `<option value="${b.id}">[${escapeHtml(b.code)}] ${escapeHtml(b.name)} (In-Hand: ${formatINR(bal.inHand)})</option>`;
+      }).join('');
+
+      if (currentVal && appState.balances.some(b => b.id === currentVal)) {
+        balSelect.value = currentVal;
+      }
+
+      populateTxSplitsDropdown();
+      updateTxLivePreview();
+    }
+
+    function populateTxSplitsDropdown() {
+      const balId = document.getElementById('txBalanceSelect').value;
+      const splitSelect = document.getElementById('txSplitSelect');
+      const currentSplitVal = splitSelect.value;
+
+      const bal = derived.balancesMap[balId];
+      if (!bal) return;
+
+      const options = bal.computedSplits.map(sp =>
+        `<option value="${sp.id}">${escapeHtml(sp.name)} (${formatINR(sp.currentAmount)})</option>`
+      );
+      options.push(`<option value="__unallocated__">Unallocated Buffer (${formatINR(Math.max(0, bal.unallocated))})</option>`);
+
+      splitSelect.innerHTML = options.join('');
+      if (currentSplitVal && (currentSplitVal === '__unallocated__' || bal.computedSplits.some(s => s.id === currentSplitVal))) {
+        splitSelect.value = currentSplitVal;
+      }
+    }
+
+    function updateTxLivePreview() {
+      const mode = document.getElementById('txModeInput').value;
+      const balId = document.getElementById('txBalanceSelect').value;
+      const splitId = document.getElementById('txSplitSelect').value;
+      const rawAmt = round2(document.getElementById('txAmountInput').value || 0);
+      const previewEl = document.getElementById('txLivePreview');
+
+      const bal = derived.balancesMap[balId];
+      if (!bal) return;
+
+      const delta = mode === 'expense' ? -rawAmt : rawAmt;
+      const newInHand = round2(bal.inHand + delta);
+      const newTotal = round2(newInHand + bal.lentOut);
+
+      let splitLine = '';
+      if (splitId !== '__unallocated__') {
+        const sp = bal.computedSplits.find(s => s.id === splitId);
+        if (sp) {
+          const newSpAmt = round2(Math.max(0, sp.currentAmount + delta));
+          splitLine = `
+            <div class="flex items-center justify-between">
+              <span class="text-slate-500 dark:text-slate-400">Split <strong>${escapeHtml(sp.name)}</strong>:</span>
+              <span class="font-mono font-bold">${formatINR(sp.currentAmount)} → <span class="${mode === 'expense' ? 'text-rose-500' : 'text-emerald-500'}">${formatINR(newSpAmt)}</span></span>
+            </div>
+          `;
+        }
+      }
+
+      const warning = (mode === 'expense' && rawAmt > bal.inHand)
+        ? `<div class="text-rose-600 dark:text-rose-400 font-bold pt-1">⚠️ Exceeds Balance ${escapeHtml(bal.code)}'s In-Hand cash (${formatINR(bal.inHand)})!</div>`
+        : '';
+
+      previewEl.innerHTML = `
+        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Live Impact Preview</div>
+        ${splitLine}
+        <div class="flex items-center justify-between">
+          <span class="text-slate-500 dark:text-slate-400">Balance ${escapeHtml(bal.code)}:</span>
+          <span class="font-mono font-bold">
+            ${
+              bal.lentOut > 0
+                ? `${formatINR(newInHand)} + <span class="text-amber-500">"${formatINR(bal.lentOut)}"</span> = ${formatINR(newTotal)}`
+                : `${formatINR(bal.totalValue)} → ${formatINR(newTotal)}`
+            }
+          </span>
+        </div>
+        ${warning}
+      `;
+    }
+
+    function prefillTransactionForm(balanceId, splitId, mode = 'expense') {
+      setTxMode(mode);
+      document.getElementById('txBalanceSelect').value = balanceId;
+      populateTxSplitsDropdown();
+      document.getElementById('txSplitSelect').value = splitId;
+      updateTxLivePreview();
+      const amountInput = document.getElementById('txAmountInput');
+      amountInput.focus();
+      amountInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function handleTransactionSubmit(e) {
+      e.preventDefault();
+      const mode = document.getElementById('txModeInput').value;
+      const balId = document.getElementById('txBalanceSelect').value;
+      const splitId = document.getElementById('txSplitSelect').value;
+      const amount = round2(document.getElementById('txAmountInput').value);
+      const note = document.getElementById('txNoteInput').value.trim();
+
+      const bal = derived.balancesMap[balId];
+      if (!bal || amount <= 0) return;
+
+      if (mode === 'expense' && amount > bal.inHand) {
+        showToast(`Cannot spend ${formatINR(amount)}: Balance ${bal.code} only has ${formatINR(bal.inHand)} In-Hand.`, 'error');
+        return;
+      }
+
+      const targetSplit = splitId !== '__unallocated__' ? bal.computedSplits.find(s => s.id === splitId) : null;
+
+      appState.transactions.push({
+        id: 'tx_' + Date.now(),
+        type: mode,
+        balanceId: bal.id,
+        splitId: targetSplit ? targetSplit.id : null,
+        personId: null,
+        amount,
+        isInitial: false,
+        note: note || `${mode === 'expense' ? 'Paid' : 'Deposited'} (${targetSplit ? targetSplit.name : 'Unallocated'} in Bal ${bal.code})`,
+        timestamp: getCurrentFormattedTime(),
+        createdAt: Date.now()
+      });
+
+      document.getElementById('txAmountInput').value = '';
+      document.getElementById('txNoteInput').value = '';
+
+      saveState();
+      renderAll();
+      showToast(`${mode === 'expense' ? 'Cut' : 'Deposited'} ${formatINR(amount)} in Balance ${bal.code}!`, 'success');
+    }
+
+    // ==================== TWO-WAY SYNCED TRANSACTION LOG (EDIT & DELETE) ====================
+
+    function setLogFilter(filter) {
+      appState.logFilter = filter;
+      ['all', 'expense', 'people', 'deposit'].forEach(f => {
+        const btn = document.getElementById('logFilter_' + f);
+        if (!btn) return;
+        btn.className = (f === filter)
+          ? 'px-2.5 py-1 rounded-lg font-semibold bg-indigo-600 text-white'
+          : 'px-2.5 py-1 rounded-lg font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800';
+      });
+      renderTransactionLog();
+    }
+
+    function renderTransactionLog() {
+      const container = document.getElementById('transactionLogList');
+      // Reverse chronological order (newest first)
+      const sorted = [...appState.transactions].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      document.getElementById('txLogCountBadge').textContent = sorted.length;
+
+      const filtered = sorted.filter(tx => {
+        if (appState.logFilter === 'all') return true;
+        if (appState.logFilter === 'expense') return tx.type === 'expense';
+        if (appState.logFilter === 'deposit') return tx.type === 'deposit';
+        if (appState.logFilter === 'people') return ['lend_out', 'lend_repay', 'borrow_in', 'borrow_repay'].includes(tx.type);
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="p-6 text-center text-xs text-slate-400">No matching transactions in log.</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(tx => {
+        const bal = derived.balancesMap[tx.balanceId];
+        const balBadge = bal ? `Bal ${bal.code}` : 'Deleted Bal';
+        const person = tx.personId ? derived.peopleMap[tx.personId] : null;
+        const split = (bal && tx.splitId) ? bal.computedSplits.find(s => s.id === tx.splitId) : null;
+
+        let iconHtml = '';
+        let amountClass = '';
+        let prefix = '';
+        let titleText = '';
+
+        if (tx.type === 'expense') {
+          iconHtml = `<div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-minus text-xs"></i></div>`;
+          amountClass = 'text-rose-600 dark:text-rose-400';
+          prefix = '-';
+          titleText = `Paid / Cut • ${split ? split.name : 'Unallocated'} (${balBadge})`;
+        } else if (tx.type === 'deposit') {
+          iconHtml = `<div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-plus text-xs"></i></div>`;
+          amountClass = 'text-emerald-600 dark:text-emerald-400';
+          prefix = '+';
+          titleText = `${tx.isInitial ? 'Initial Balance Deposit' : 'Deposit'} • ${split ? split.name + ' ' : ''}(${balBadge})`;
+        } else if (tx.type === 'lend_out') {
+          iconHtml = `<div class="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-paper-plane text-xs"></i></div>`;
+          amountClass = 'text-amber-600 dark:text-amber-400';
+          prefix = '↗';
+          titleText = `Lent to ${person ? person.name : 'Person'} (${balBadge})`;
+        } else if (tx.type === 'lend_repay') {
+          iconHtml = `<div class="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-rotate-left text-xs"></i></div>`;
+          amountClass = 'text-emerald-600 dark:text-emerald-400';
+          prefix = '+';
+          titleText = `Received Back from ${person ? person.name : 'Person'} (${balBadge})`;
+        } else if (tx.type === 'borrow_in') {
+          iconHtml = `<div class="w-8 h-8 rounded-lg bg-purple-500/15 text-purple-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-arrow-down-left text-xs"></i></div>`;
+          amountClass = 'text-purple-600 dark:text-purple-400';
+          prefix = '+';
+          titleText = `Borrowed from ${person ? person.name : 'Person'} (${balBadge})`;
+        } else if (tx.type === 'borrow_repay') {
+          iconHtml = `<div class="w-8 h-8 rounded-lg bg-purple-500/15 text-purple-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-check text-xs"></i></div>`;
+          amountClass = 'text-purple-600 dark:text-purple-400';
+          prefix = '-';
+          titleText = `Paid Back to ${person ? person.name : 'Person'} (${balBadge})`;
+        }
+
+        return `
+          <div class="p-3 hover:bg-slate-50/80 dark:hover:bg-slate-850/60 transition flex items-center justify-between gap-2.5">
+            <div class="flex items-start gap-2.5 min-w-0">
+              ${iconHtml}
+              <div class="min-w-0">
+                <div class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">${escapeHtml(titleText)}</div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400 truncate">${escapeHtml(tx.note || '')}</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">${escapeHtml(tx.timestamp || '')}</div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 shrink-0">
+              <span class="text-xs font-mono font-bold ${amountClass} mr-1">${prefix} ${formatINR(tx.amount)}</span>
+
+              <button
+                type="button"
+                onclick="openEditTxModal('${tx.id}')"
+                class="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-500/20 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition text-xs"
+                title="Edit transaction amount or note (recalculates balances)"
+              >
+                <i class="fa-solid fa-pen"></i>
+              </button>
+
+              <button
+                type="button"
+                onclick="deleteTransaction('${tx.id}')"
+                class="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-500/20 text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-300 transition text-xs"
+                title="Delete transaction and revert its effect on balances"
+              >
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openEditTxModal(txId) {
+      const tx = appState.transactions.find(t => t.id === txId);
+      if (!tx) return;
+      document.getElementById('editTxId').value = tx.id;
+      document.getElementById('editTxAmount').value = tx.amount;
+      document.getElementById('editTxNote').value = tx.note || '';
+
+      const modal = document.getElementById('editTxModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeEditTxModal() {
+      const modal = document.getElementById('editTxModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function handleSaveEditTx(e) {
+      e.preventDefault();
+      const txId = document.getElementById('editTxId').value;
+      const newAmt = round2(document.getElementById('editTxAmount').value);
+      const newNote = document.getElementById('editTxNote').value.trim();
+
+      const tx = appState.transactions.find(t => t.id === txId);
+      if (!tx || newAmt <= 0) return;
+
+      tx.amount = newAmt;
+      tx.note = newNote;
+
+      closeEditTxModal();
+      saveState();
+      renderAll();
+      showToast('Transaction updated! All linked balances, splits & people recalculated.', 'success');
+    }
+
+    function deleteTxFromEditModal() {
+      const txId = document.getElementById('editTxId').value;
+      closeEditTxModal();
+      if (txId) deleteTransaction(txId);
+    }
+
+    function deleteTransaction(txId) {
+      const idx = appState.transactions.findIndex(t => t.id === txId);
+      if (idx === -1) return;
+      const tx = appState.transactions[idx];
+      const balId = tx.balanceId;
+
+      appState.transactions.splice(idx, 1);
+
+      // If this was the only transaction for an auto-created or newly created balance with no splits, clean up empty balance if appropriate
+      const remainingForBal = appState.transactions.filter(t => t.balanceId === balId);
+      const balObj = appState.balances.find(b => b.id === balId);
+      if (balObj && remainingForBal.length === 0 && (balObj.splits || []).length === 0 && (tx.isInitial || balObj.autoCreatedForPersonId)) {
+        appState.balances = appState.balances.filter(b => b.id !== balId);
+        appState.selectedForCombiner = appState.selectedForCombiner.filter(id => id !== balId);
+      }
+
+      saveState();
+      renderAll();
+      showToast('Transaction deleted and balances recalculated!', 'info');
+    }
+
+    // ==================== BALANCE & SPLIT MODALS ====================
+
+    function openNewBalanceModal() {
+      document.getElementById('balanceModalTitle').textContent = 'Create New Balance';
+      document.getElementById('modalBalanceId').value = '';
+      document.getElementById('modalBalanceCode').value = getNextAvailableBalanceCode();
+      document.getElementById('modalBalanceName').value = '';
+      document.getElementById('modalBalanceAmount').value = '';
+      document.getElementById('modalBalanceCustody').checked = false;
+      document.getElementById('modalDeleteBalanceBtn').classList.add('hidden');
+
+      const modal = document.getElementById('balanceModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function openEditBalanceModal(balanceId) {
+      const bal = derived.balancesMap[balanceId];
+      if (!bal) return;
+
+      document.getElementById('balanceModalTitle').textContent = `Edit Balance ${bal.code}`;
+      document.getElementById('modalBalanceId').value = bal.id;
+      document.getElementById('modalBalanceCode').value = bal.code;
+      document.getElementById('modalBalanceName').value = bal.name;
+      document.getElementById('modalBalanceAmount').value = bal.inHand;
+      document.getElementById('modalBalanceCustody').checked = !!bal.isCustody;
+      document.getElementById('modalDeleteBalanceBtn').classList.remove('hidden');
+
+      const modal = document.getElementById('balanceModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeBalanceModal() {
+      const modal = document.getElementById('balanceModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function handleQuickOnboardingCreate(e) {
+      e.preventDefault();
+      const code = document.getElementById('onboardCode').value.trim().toUpperCase() || 'A';
+      const name = document.getElementById('onboardName').value.trim();
+      const amount = round2(document.getElementById('onboardAmount').value || 0);
+
+      const newId = 'bal_' + Date.now();
+      appState.balances.push({
+        id: newId,
+        code,
+        name,
+        isCustody: false,
+        autoCreatedForPersonId: null,
+        splits: []
+      });
+      appState.selectedForCombiner.push(newId);
+
+      if (amount > 0) {
+        appState.transactions.push({
+          id: 'tx_' + Date.now(),
+          type: 'deposit',
+          balanceId: newId,
+          splitId: null,
+          personId: null,
+          amount,
+          isInitial: true,
+          note: `Initial Deposit for Balance ${code} (${name})`,
+          timestamp: getCurrentFormattedTime(),
+          createdAt: Date.now()
+        });
+      }
+
+      dismissUndoBanner();
+      saveState();
+      renderAll();
+      showToast(`Created Balance ${code} (${formatINR(amount)})!`, 'success');
+    }
+
+    function handleSaveBalanceModal(e) {
+      e.preventDefault();
+      const id = document.getElementById('modalBalanceId').value;
+      const code = document.getElementById('modalBalanceCode').value.trim().toUpperCase() || 'A';
+      const name = document.getElementById('modalBalanceName').value.trim();
+      const desiredInHand = round2(document.getElementById('modalBalanceAmount').value || 0);
+      const isCustody = document.getElementById('modalBalanceCustody').checked;
+
+      if (id) {
+        const balObj = appState.balances.find(b => b.id === id);
+        const dBal = derived.balancesMap[id];
+        if (balObj && dBal) {
+          balObj.code = code;
+          balObj.name = name;
+          balObj.isCustody = isCustody;
+
+          // Keep Transaction Log 100% synced if In-Hand was changed
+          const diff = round2(desiredInHand - dBal.inHand);
+          if (Math.abs(diff) >= 0.01) {
+            const initTx = appState.transactions.find(t => t.balanceId === id && t.isInitial && t.type === 'deposit');
+            if (initTx && round2(initTx.amount + diff) >= 0) {
+              initTx.amount = round2(initTx.amount + diff);
+            } else if (diff > 0) {
+              appState.transactions.push({
+                id: 'tx_' + Date.now(),
+                type: 'deposit',
+                balanceId: id,
+                splitId: null,
+                personId: null,
+                amount: diff,
+                isInitial: false,
+                note: `Balance ${code} In-Hand Adjustment (+${formatINR(diff)})`,
+                timestamp: getCurrentFormattedTime(),
+                createdAt: Date.now()
+              });
+            } else {
+              appState.transactions.push({
+                id: 'tx_' + Date.now(),
+                type: 'expense',
+                balanceId: id,
+                splitId: null,
+                personId: null,
+                amount: Math.abs(diff),
+                isInitial: false,
+                note: `Balance ${code} In-Hand Adjustment (${formatINR(diff)})`,
+                timestamp: getCurrentFormattedTime(),
+                createdAt: Date.now()
+              });
+            }
+          }
+        }
+        showToast(`Updated Balance ${code} and synced transaction log!`, 'success');
+      } else {
+        const newId = 'bal_' + Date.now();
+        appState.balances.push({
+          id: newId,
+          code,
+          name,
+          isCustody,
+          autoCreatedForPersonId: null,
+          splits: []
+        });
+        if (!isCustody) appState.selectedForCombiner.push(newId);
+
+        if (desiredInHand > 0) {
+          appState.transactions.push({
+            id: 'tx_' + Date.now(),
+            type: 'deposit',
+            balanceId: newId,
+            splitId: null,
+            personId: null,
+            amount: desiredInHand,
+            isInitial: true,
+            note: `Initial Deposit for Balance ${code} (${name})`,
+            timestamp: getCurrentFormattedTime(),
+            createdAt: Date.now()
+          });
+        }
+        showToast(`Created Balance ${code} (${formatINR(desiredInHand)})!`, 'success');
+      }
+
+      closeBalanceModal();
+      saveState();
+      renderAll();
+    }
+
+    /**
+     * Deleting a Balance removes the Balance AND all transactions tied to that BalanceId so zero orphan logs remain!
+     */
+    function deleteBalance(balanceId) {
+      const bal = appState.balances.find(b => b.id === balanceId);
+      if (!bal) return;
+
+      appState.balances = appState.balances.filter(b => b.id !== balanceId);
+      appState.transactions = appState.transactions.filter(t => t.balanceId !== balanceId);
+      appState.selectedForCombiner = appState.selectedForCombiner.filter(id => id !== balanceId);
+
+      saveState();
+      renderAll();
+      showToast(`Deleted Balance ${bal.code} and removed all its linked transactions.`, 'info');
+    }
+
+    function deleteBalanceFromModal() {
+      const id = document.getElementById('modalBalanceId').value;
+      closeBalanceModal();
+      if (id) deleteBalance(id);
+    }
+
+    // ==================== SUBCATEGORY SPLIT MODAL & INLINE ADDER ====================
+
+    function openSplitModal(balanceId, splitId = '') {
+      const bal = derived.balancesMap[balanceId];
+      if (!bal) return;
+
+      document.getElementById('modalSplitBalanceId').value = bal.id;
+      document.getElementById('modalSplitId').value = splitId;
+      document.getElementById('modalSplitIncreaseBalance').checked = false;
+
+      if (splitId) {
+        const sp = bal.computedSplits.find(s => s.id === splitId);
+        if (!sp) return;
+        document.getElementById('splitModalTitle').textContent = `Edit Split in Balance ${bal.code}`;
+        document.getElementById('splitModalSubtitle').textContent = `${bal.name} • Total: ${formatINR(bal.totalValue)}`;
+        document.getElementById('modalSplitName').value = sp.name;
+        document.getElementById('modalSplitAmount').value = sp.currentAmount;
+        document.getElementById('modalSplitHelper').textContent = `Unallocated in Balance ${bal.code}: ${formatINR(bal.unallocated)}`;
+      } else {
+        document.getElementById('splitModalTitle').textContent = `Add Split to Balance ${bal.code}`;
+        document.getElementById('splitModalSubtitle').textContent = `${bal.name} • Available Unallocated: ${formatINR(Math.max(0, bal.unallocated))}`;
+        document.getElementById('modalSplitName').value = '';
+        document.getElementById('modalSplitAmount').value = bal.unallocated > 0 ? bal.unallocated : '';
+        document.getElementById('modalSplitHelper').textContent = `Allotting inside Balance ${bal.code}`;
+      }
+
+      const modal = document.getElementById('splitModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function fillRemainingUnallocated() {
+      const balId = document.getElementById('modalSplitBalanceId').value;
+      const splitId = document.getElementById('modalSplitId').value;
+      const bal = derived.balancesMap[balId];
+      if (!bal) return;
+
+      let avail = bal.unallocated;
+      if (splitId) {
+        const sp = bal.computedSplits.find(s => s.id === splitId);
+        if (sp) avail = round2(avail + sp.currentAmount);
+      }
+      document.getElementById('modalSplitAmount').value = Math.max(0, avail);
+    }
+
+    function closeSplitModal() {
+      const modal = document.getElementById('splitModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function handleSaveSplitModal(e) {
+      e.preventDefault();
+      const balId = document.getElementById('modalSplitBalanceId').value;
+      const splitId = document.getElementById('modalSplitId').value;
+      const name = document.getElementById('modalSplitName').value.trim();
+      const desiredAmt = round2(document.getElementById('modalSplitAmount').value || 0);
+      const adjustParentBal = document.getElementById('modalSplitIncreaseBalance').checked;
+
+      const balObj = appState.balances.find(b => b.id === balId);
+      const dBal = derived.balancesMap[balId];
+      if (!balObj || !dBal) return;
+
+      if (splitId) {
+        const rawSp = balObj.splits.find(s => s.id === splitId);
+        const compSp = dBal.computedSplits.find(s => s.id === splitId);
+        if (rawSp && compSp) {
+          const diff = round2(desiredAmt - compSp.currentAmount);
+          rawSp.name = name;
+          rawSp.baseAmount = round2(rawSp.baseAmount + diff);
+
+          if (adjustParentBal && Math.abs(diff) >= 0.01) {
+            appState.transactions.push({
+              id: 'tx_' + Date.now(),
+              type: diff > 0 ? 'deposit' : 'expense',
+              balanceId: balId,
+              splitId: null,
+              personId: null,
+              amount: Math.abs(diff),
+              isInitial: false,
+              note: `Adjusted Split "${name}" & Balance ${balObj.code}`,
+              timestamp: getCurrentFormattedTime(),
+              createdAt: Date.now()
+            });
+          }
+        }
+        showToast(`Updated split "${name}" to ${formatINR(desiredAmt)}`, 'success');
+      } else {
+        balObj.splits.push({
+          id: 'sp_' + Date.now(),
+          name,
+          baseAmount: desiredAmt
+        });
+
+        if (adjustParentBal && desiredAmt > 0) {
+          appState.transactions.push({
+            id: 'tx_' + Date.now(),
+            type: 'deposit',
+            balanceId: balId,
+            splitId: null,
+            personId: null,
+            amount: desiredAmt,
+            isInitial: false,
+            note: `Added "${name}" (+${formatINR(desiredAmt)} to Balance ${balObj.code})`,
+            timestamp: getCurrentFormattedTime(),
+            createdAt: Date.now()
+          });
+        }
+        showToast(`Added split "${name}" (${formatINR(desiredAmt)}) to Balance ${balObj.code}`, 'success');
+      }
+
+      closeSplitModal();
+      saveState();
+      renderAll();
+    }
+
+    function handleInlineSplitAdd(e, balanceId) {
+      e.preventDefault();
+      const balObj = appState.balances.find(b => b.id === balanceId);
+      if (!balObj) return;
+
+      const nameInput = document.getElementById(`inlineSplitName_${balanceId}`);
+      const amtInput = document.getElementById(`inlineSplitAmt_${balanceId}`);
+      const growCheck = document.getElementById(`inlineSplitGrow_${balanceId}`);
+
+      const name = nameInput.value.trim();
+      const amount = round2(amtInput.value || 0);
+      if (!name || amount <= 0) return;
+
+      balObj.splits.push({
+        id: 'sp_' + Date.now(),
+        name,
+        baseAmount: amount
+      });
+
+      if (growCheck && growCheck.checked) {
+        appState.transactions.push({
+          id: 'tx_' + Date.now(),
+          type: 'deposit',
+          balanceId,
+          splitId: null,
+          personId: null,
+          amount,
+          isInitial: false,
+          note: `Added split "${name}" & increased Balance ${balObj.code}`,
+          timestamp: getCurrentFormattedTime(),
+          createdAt: Date.now()
+        });
+      }
+
+      nameInput.value = '';
+      amtInput.value = '';
+      if (growCheck) growCheck.checked = false;
+
+      saveState();
+      renderAll();
+      showToast(`Added "${name}" (${formatINR(amount)}) to Balance ${balObj.code}!`, 'success');
+    }
+
+    function deleteSplit(balanceId, splitId) {
+      const balObj = appState.balances.find(b => b.id === balanceId);
+      if (!balObj) return;
+      const sp = (balObj.splits || []).find(s => s.id === splitId);
+      balObj.splits = (balObj.splits || []).filter(s => s.id !== splitId);
+      // Unlink splitId on past transactions so the parent balance history remains intact
+      appState.transactions.forEach(t => {
+        if (t.splitId === splitId) t.splitId = null;
+      });
+      saveState();
+      renderAll();
+      if (sp) showToast(`Removed split "${sp.name}" (amount returned to Unallocated in Balance ${balObj.code}).`, 'info');
+    }
+
+    // ==================== CLEAR ALL, UNDO & UTILITIES ====================
+
+    function clearAllAndStartFresh() {
+      lastBackupBeforeClear = JSON.parse(JSON.stringify(appState));
+      appState = getEmptyFreshState();
+      saveState();
+      renderAll();
+      document.getElementById('undoClearBanner').classList.remove('hidden');
+      showToast('All data cleared! Ready to test from scratch.', 'success');
+    }
+
+    function undoClearAll() {
+      if (!lastBackupBeforeClear) return;
+      appState = JSON.parse(JSON.stringify(lastBackupBeforeClear));
+      lastBackupBeforeClear = null;
+      dismissUndoBanner();
+      saveState();
+      renderAll();
+      showToast('Restored your previous data!', 'info');
+    }
+
+    function dismissUndoBanner() {
+      document.getElementById('undoClearBanner').classList.add('hidden');
+    }
+
+    function loadDemoScenario() {
+      appState = getDefaultDemoState();
+      dismissUndoBanner();
+      saveState();
+      renderAll();
+      showToast('Loaded Sample Demo Scenario (₹30,000 across Balances A, B, C, D)!', 'success');
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const icon = document.getElementById('themeIcon');
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        icon.className = 'fa-solid fa-moon text-slate-700';
+      } else {
+        html.classList.add('dark');
+        icon.className = 'fa-solid fa-sun text-amber-400';
+      }
+    }
+
+    function getCurrentFormattedTime() {
+      const now = new Date();
+      return now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+
+      let colors = 'bg-slate-900 dark:bg-slate-800 text-white border-slate-700';
+      let icon = 'fa-circle-info text-indigo-400';
+      if (type === 'success') {
+        colors = 'bg-emerald-950/95 text-emerald-100 border-emerald-700/80';
+        icon = 'fa-circle-check text-emerald-400';
+      } else if (type === 'error') {
+        colors = 'bg-rose-950/95 text-rose-100 border-rose-700/80';
+        icon = 'fa-triangle-exclamation text-rose-400';
+      }
+
+      toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-xl text-xs font-medium transition-all duration-300 ${colors}`;
+      toast.innerHTML = `
+        <i class="fa-solid ${icon} text-sm shrink-0"></i>
+        <span>${escapeHtml(message)}</span>
+      `;
+
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(8px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderAll();
+    });
+  </script>
+</body>
+</html>
