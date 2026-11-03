@@ -1404,7 +1404,7 @@
         return;
       }
 
-      container.innerHTML = appState.balances.map(b => {
+      container.innerHTML = [...appState.balances].reverse().map(b => {
         const bal = derived.balancesMap[b.id];
         const hasLent = bal.lentOut > 0;
         const hasBorrowed = bal.borrowedIn > 0;
