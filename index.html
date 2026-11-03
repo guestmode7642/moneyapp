@@ -1036,6 +1036,11 @@
       // Sort transactions chronologically (oldest first) for deterministic replay
       const chronologicalTxs = [...appState.transactions].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 
+      // Net matrix per (personId__balanceId):
+      // Positive (+) = Person holds our money (Lent Out)
+      // Negative (-) = We hold their money (Borrowed In)
+      const netPersonBalMatrix = {};
+
       chronologicalTxs.forEach(tx => {
         const amt = round2(tx.amount);
         const bal = balancesMap[tx.balanceId];
@@ -1057,34 +1062,32 @@
             const sp = bal.computedSplits.find(s => s.id === tx.splitId);
             if (sp) sp.currentAmount = round2(Math.max(0, sp.currentAmount - amt));
           }
-        } else if (tx.type === 'lend_out') {
+        } else if (tx.type === 'lend_out' || tx.type === 'borrow_repay') {
+          // Money goes OUT of our In-Hand to the person (+amt to net position)
           bal.inHand = round2(bal.inHand - amt);
           if (tx.personId) {
             const key = `${tx.personId}__${bal.id}`;
-            lentMatrix[key] = round2((lentMatrix[key] || 0) + amt);
+            netPersonBalMatrix[key] = round2((netPersonBalMatrix[key] || 0) + amt);
           }
-        } else if (tx.type === 'lend_repay') {
+        } else if (tx.type === 'borrow_in' || tx.type === 'lend_repay') {
+          // Money comes IN to our In-Hand from the person (-amt to net position)
           bal.inHand = round2(bal.inHand + amt);
           if (tx.personId) {
             const key = `${tx.personId}__${bal.id}`;
-            lentMatrix[key] = round2(Math.max(0, (lentMatrix[key] || 0) - amt));
-          }
-        } else if (tx.type === 'borrow_in') {
-          bal.inHand = round2(bal.inHand + amt);
-          if (tx.personId) {
-            const key = `${tx.personId}__${bal.id}`;
-            borrowedMatrix[key] = round2((borrowedMatrix[key] || 0) + amt);
-          }
-        } else if (tx.type === 'borrow_repay') {
-          bal.inHand = round2(bal.inHand - amt);
-          if (tx.personId) {
-            const key = `${tx.personId}__${bal.id}`;
-            borrowedMatrix[key] = round2(Math.max(0, (borrowedMatrix[key] || 0) - amt));
+            netPersonBalMatrix[key] = round2((netPersonBalMatrix[key] || 0) - amt);
           }
         }
       });
 
-      // 3. Aggregate lentMatrix & borrowedMatrix per Balance and per Person
+      // Split netted positions into lentMatrix (> 0) or borrowedMatrix (< 0)
+      Object.entries(netPersonBalMatrix).forEach(([key, netVal]) => {
+        const rounded = round2(netVal);
+        if (rounded > 0) {
+          lentMatrix[key] = rounded;
+        } else if (rounded < 0) {
+          borrowedMatrix[key] = Math.abs(rounded);
+        }
+      });      // 3. Aggregate lentMatrix & borrowedMatrix per Balance and per Person
       Object.keys(lentMatrix).forEach(key => {
         const activeAmt = round2(lentMatrix[key]);
         if (activeAmt <= 0) return;
@@ -1742,9 +1745,51 @@
       }
     }
 
+// Helper: Finds any balance this person is already active on (Lent, Borrowed, Custody, or recent tx)
+    function findExistingBalanceForPerson(personId, rawName = '') {
+      const dPerson = personId ? derived.peopleMap[personId] : null;
+
+      // 1. Active balance where they hold our money (lentByBalance)
+      if (dPerson && dPerson.lentByBalance.length > 0) {
+        const b = appState.balances.find(x => x.id === dPerson.lentByBalance[0].balanceId);
+        if (b) return b;
+      }
+      // 2. Active balance where we hold their money (borrowedByBalance)
+      if (dPerson && dPerson.borrowedByBalance.length > 0) {
+        const b = appState.balances.find(x => x.id === dPerson.borrowedByBalance[0].balanceId);
+        if (b) return b;
+      }
+      // 3. Custody balance created for this person
+      const nameLower = rawName.trim().toLowerCase();
+      const custodyBal = appState.balances.find(
+        b => (personId && b.autoCreatedForPersonId === personId) ||
+             (nameLower && b.isCustody && b.name.toLowerCase().includes(nameLower))
+      );
+      if (custodyBal) return custodyBal;
+
+      // 4. Most recent transaction balance with this person
+      if (personId) {
+        const lastTx = [...appState.transactions]
+          .reverse()
+          .find(t => t.personId === personId && appState.balances.some(b => b.id === t.balanceId));
+        if (lastTx) return appState.balances.find(b => b.id === lastTx.balanceId);
+      }
+      return null;
+    }
+
     function selectPersonFromDropdown(name) {
       document.getElementById('personNameInput').value = name;
       document.getElementById('personDropdownMenu').classList.add('hidden');
+
+      // If in 'lend' mode and this person already has an active balance, auto-select it
+      const mode = document.getElementById('peopleFormMode').value;
+      const existingPerson = Object.values(derived.peopleMap).find(p => p.name.toLowerCase() === name.trim().toLowerCase());
+      if (mode === 'lend' && existingPerson) {
+        const linkedBal = findExistingBalanceForPerson(existingPerson.id, name);
+        if (linkedBal) {
+          document.getElementById('peopleBalanceSelect').value = linkedBal.id;
+        }
+      }
       updatePeopleFormPreview();
     }
 
@@ -1844,13 +1889,14 @@
       const existingPerson = Object.values(derived.peopleMap).find(p => p.name.toLowerCase() === rawName.toLowerCase());
 
       if (mode === 'borrow') {
-        const currentOwed = existingPerson ? existingPerson.totalBorrowedFromThem : 0;
-        const newOwed = round2(currentOwed + amt);
+const currentNet = existingPerson
+          ? round2(existingPerson.totalBorrowedFromThem - existingPerson.totalLentToThem)
+          : 0;
+        const afterNet = round2(currentNet + amt);
+        const newOwed = Math.abs(afterNet);
 
         if (balId === '__AUTO_PERSON_ACCOUNT__') {
-          const existingAutoBal = existingPerson
-            ? appState.balances.find(b => b.autoCreatedForPersonId === existingPerson.id || b.name.toLowerCase().includes(rawName.toLowerCase()))
-            : null;
+            const existingAutoBal = findExistingBalanceForPerson(existingPerson?.id, rawName);
 
           if (existingAutoBal) {
             const dBal = derived.balancesMap[existingAutoBal.id];
@@ -1921,11 +1967,8 @@
         let targetBalance = null;
 
         if (balChoice === '__AUTO_PERSON_ACCOUNT__') {
-          // Check if person already has a linked custody balance
-          targetBalance = appState.balances.find(
-            b => b.autoCreatedForPersonId === person.id ||
-                 (b.isCustody && b.name.toLowerCase().includes(person.name.toLowerCase()))
-          );
+// Reuse any balance this person already interacted with (e.g. Balance A if they took money from A)
+          targetBalance = findExistingBalanceForPerson(person.id, person.name);
 
           if (!targetBalance) {
             const newCode = getNextAvailableBalanceCode();
