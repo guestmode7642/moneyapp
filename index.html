@@ -2708,7 +2708,8 @@ const currentNet = existingPerson
     function deleteTransaction(txId) {
       const idx = appState.transactions.findIndex(t => t.id === txId);
       if (idx === -1) return;
-      const tx = appState.transactions[idx];
+      const tx = appState.transactions[idx]; 
+      if (!confirm(`⚠️ Are you sure you want to delete this transaction (${formatINR(tx.amount)} - ${tx.note || tx.type})? This will revert its effect on your balances.`)) return;
       const balId = tx.balanceId;
 
       appState.transactions.splice(idx, 1);
@@ -2895,7 +2896,7 @@ const currentNet = existingPerson
     function deleteBalance(balanceId) {
       const bal = appState.balances.find(b => b.id === balanceId);
       if (!bal) return;
-
+      if (!confirm(`⚠️ Are you sure you want to delete Balance ${bal.code} (${bal.name})? This will permanently remove the account and all its transaction logs.`)) return;
       appState.balances = appState.balances.filter(b => b.id !== balanceId);
       appState.transactions = appState.transactions.filter(t => t.balanceId !== balanceId);
       appState.selectedForCombiner = appState.selectedForCombiner.filter(id => id !== balanceId);
@@ -3074,6 +3075,8 @@ const currentNet = existingPerson
       const balObj = appState.balances.find(b => b.id === balanceId);
       if (!balObj) return;
       const sp = (balObj.splits || []).find(s => s.id === splitId);
+      if(!sp)return;
+      if (!confirm(`⚠️ Are you sure you want to delete subcategory split "${sp.name}"? The amount will return to the unallocated pool.`)) return;
       balObj.splits = (balObj.splits || []).filter(s => s.id !== splitId);
       // Unlink splitId on past transactions so the parent balance history remains intact
       appState.transactions.forEach(t => {
@@ -3087,6 +3090,7 @@ const currentNet = existingPerson
     // ==================== CLEAR ALL, UNDO & UTILITIES ====================
 
     function clearAllAndStartFresh() {
+      if (!confirm('⚠️ WARNING: This will wipe all balances, splits, people, and transaction history. Are you sure you want to clear everything and start fresh?')) return;
       lastBackupBeforeClear = JSON.parse(JSON.stringify(appState));
       appState = getEmptyFreshState();
       saveState();
