@@ -116,7 +116,50 @@
         </button>
       </div>
     </div>
+<!-- In-App Multi-Page Navigation Tabs -->
+    <div class="border-t border-slate-200/80 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/60">
+      <nav aria-label="App Pages" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-1.5 overflow-x-auto py-2">
+        <button
+          type="button"
+          id="navTab_balances"
+          onclick="switchAppPage('balances')"
+          class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white shadow-xs transition flex items-center gap-2 shrink-0"
+        >
+          <i class="fa-solid fa-wallet"></i>
+          <span>1. Balances &amp; Splits</span>
+        </button>
 
+        <button
+          type="button"
+          id="navTab_people"
+          onclick="switchAppPage('people')"
+          class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition flex items-center gap-2 shrink-0"
+        >
+          <i class="fa-solid fa-users-viewfinder text-amber-500"></i>
+          <span>2. People (Borrow &amp; Lend)</span>
+        </button>
+
+        <button
+          type="button"
+          id="navTab_transactions"
+          onclick="switchAppPage('transactions')"
+          class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition flex items-center gap-2 shrink-0"
+        >
+          <i class="fa-solid fa-receipt text-rose-500"></i>
+          <span>3. UPI &amp; History Log</span>
+        </button>
+
+        <button
+          type="button"
+          id="navTab_combiner"
+          onclick="switchAppPage('combiner')"
+          class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition flex items-center gap-2 shrink-0"
+        >
+          <i class="fa-solid fa-calculator text-indigo-400"></i>
+          <span>4. Balance Combiner</span>
+        </button>
+      </nav>
+    </div>
     <!-- Undo Clear Banner -->
     <div id="undoClearBanner" class="hidden bg-indigo-600 text-white px-4 py-2 text-xs font-medium">
       <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
@@ -140,7 +183,7 @@
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
     <!-- 1. TOP OVERVIEW & RECONCILIATION BAR -->
-    <section aria-label="Account Overview" class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-sm">
+<section data-page="balances combiner" aria-label="Account Overview" class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-sm">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 mb-4 border-b border-slate-100 dark:border-slate-800/80">
         <div>
           <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
@@ -202,8 +245,8 @@
       </div>
     </section>
 
-    <!-- 2. INTERACTIVE BALANCE COMBINER (SUM CALCULATOR) -->
-    <section aria-label="Balance Combiner" class="bg-gradient-to-r from-indigo-950 via-slate-900 to-slate-900 text-white rounded-2xl border border-indigo-800/60 p-4 sm:p-5 shadow-md">
+<!-- 2. INTERACTIVE BALANCE COMBINER (SUM CALCULATOR) -->
+    <section data-page="combiner" aria-label="Balance Combiner" class="hidden bg-gradient-to-r from-indigo-950 via-slate-900 to-slate-900 text-white rounded-2xl border border-indigo-800/60 p-4 sm:p-5 shadow-md">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
           <div class="flex items-center gap-2">
@@ -264,11 +307,11 @@
       </div>
     </section>
 
-    <!-- 3. TWO-COLUMN MAIN WORKSPACE -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <!-- 3. MULTI-PAGE WORKSPACE -->
+    <div class="space-y-6">
 
-      <!-- ==================== LEFT COLUMN (7 cols): BALANCES (A, B, C...) & SUBCATEGORIES ==================== -->
-      <div class="lg:col-span-7 space-y-4">
+      <!-- ==================== PAGE 1: BALANCES (A, B, C...) & SUBCATEGORIES ==================== -->
+      <div data-page="balances" class="space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -292,11 +335,11 @@
         </div>
       </div>
 
-      <!-- ==================== RIGHT COLUMN (5 cols): PEOPLE LEDGER, UPI TRANSACTIONS, & SYNCED LOG ==================== -->
-      <div class="lg:col-span-5 space-y-6">
+       <!-- ==================== PAGES 2 & 3 CONTAINER ==================== -->
+      <div class="space-y-6">
 
-        <!-- RIGHT BOX 1: PEOPLE LEDGER (BORROW AUTO-ACCOUNT + LEND + ACTIVE DIRECTORY) -->
-        <section class="bg-white dark:bg-slate-900 rounded-2xl border-2 border-amber-500/40 dark:border-amber-500/30 shadow-sm overflow-hidden">
+        <!-- PAGE 2: PEOPLE LEDGER (BORROW AUTO-ACCOUNT + LEND + ACTIVE DIRECTORY) -->
+        <section data-page="people" class="hidden max-w-4xl mx-auto bg-white dark:bg-slate-900 rounded-2xl border-2 border-amber-500/40 dark:border-amber-500/30 shadow-sm overflow-hidden">
           <!-- Header -->
           <div class="p-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-amber-500/10 via-purple-500/5 to-transparent flex items-center justify-between gap-2">
             <div class="flex items-center gap-2.5">
@@ -478,8 +521,8 @@
           </div>
         </section>
 
-        <!-- RIGHT BOX 2: UPI / CASH TRANSACTION RECORDER (SPEND / CUT OR DEPOSIT / ADD) -->
-        <section class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <!-- PAGE 3 (PART A): UPI / CASH TRANSACTION RECORDER (SPEND / CUT OR DEPOSIT / ADD) -->
+        <section data-page="transactions" class="hidden max-w-4xl mx-auto bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
           <div class="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 bg-slate-50/50 dark:bg-slate-850/50">
             <div class="flex items-center gap-2">
               <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
@@ -546,8 +589,8 @@
           </form>
         </section>
 
-        <!-- RIGHT BOX 3: TWO-WAY SYNCED TRANSACTION LOG (EDIT OR DELETE ANY ENTRY) -->
-        <section class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <!-- PAGE 3 (PART B): TWO-WAY SYNCED TRANSACTION LOG (EDIT OR DELETE ANY ENTRY) -->
+        <section data-page="transactions" class="hidden max-w-4xl mx-auto bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
           <div class="p-4 border-b border-slate-100 dark:border-slate-800 space-y-2.5">
             <div class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-2">
@@ -2230,6 +2273,7 @@ const currentNet = existingPerson
     }
 
     function prefillLendFromBalance(balanceId) {
+      switchAppPage('people');
       setPeopleFormMode('lend');
       document.getElementById('peopleBalanceSelect').value = balanceId;
       updatePeopleFormPreview();
@@ -2506,6 +2550,7 @@ const currentNet = existingPerson
     }
 
     function prefillTransactionForm(balanceId, splitId, mode = 'expense') {
+      switchAppPage('transactions');
       setTxMode(mode);
       document.getElementById('txBalanceSelect').value = balanceId;
       populateTxSplitsDropdown();
@@ -3181,8 +3226,39 @@ const currentNet = existingPerson
       }, 3500);
     }
 
+    let currentAppPage = 'balances';
+
+    function switchAppPage(pageName) {
+      currentAppPage = pageName;
+
+      // 1. Show/hide sections matching data-page
+      document.querySelectorAll('[data-page]').forEach(el => {
+        const allowedPages = (el.getAttribute('data-page') || '').split(/\s+/);
+        if (allowedPages.includes(pageName)) {
+          el.classList.remove('hidden');
+        } else {
+          el.classList.add('hidden');
+        }
+      });
+
+      // 2. Update active tab button styles
+      const tabs = ['balances', 'people', 'transactions', 'combiner'];
+      tabs.forEach(tab => {
+        const btn = document.getElementById('navTab_' + tab);
+        if (!btn) return;
+        if (tab === pageName) {
+          btn.className = 'px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white shadow-xs transition flex items-center gap-2 shrink-0';
+        } else {
+          btn.className = 'px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition flex items-center gap-2 shrink-0';
+        }
+      });
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
       renderAll();
+      switchAppPage('balances');
     });
   </script>
 </body>
