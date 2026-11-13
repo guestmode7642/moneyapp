@@ -4,7 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PocketLedger — Personal Money, Split Balance & People Ledger</title>
-  <!-- Tailwind CSS CDN -->
+ <!-- PWA & Standalone Mobile App Meta -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#4f46e5" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PocketLedger" />
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2489/2489756.png" /> <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Google Fonts: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -101,6 +107,17 @@
 
       <!-- Top Controls -->
       <div class="flex items-center flex-wrap gap-2">
+        <button
+          type="button"
+          id="profileSyncBtn"
+          onclick="openAuthModal()"
+          class="text-xs font-bold px-3.5 py-2 rounded-xl bg-indigo-600/15 hover:bg-indigo-600/25 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 transition flex items-center gap-2"
+          title="Manage User Profile & Multi-Device Cloud Sync"
+        >
+          <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-amber-400"></span>
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <span id="profileBtnLabel">Login / Sync</span>
+        </button>
         <button onclick="clearAllAndStartFresh()" class="text-xs font-bold px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-sm shadow-rose-500/20 transition flex items-center gap-1.5" title="Wipe all values and start with an empty app">
           <i class="fa-solid fa-broom"></i>
           <span>Clear All &amp; Start Fresh</span>
@@ -818,7 +835,131 @@
       </form>
     </div>
   </div>
+<!-- MODAL 5: USER PROFILE & MULTI-DEVICE CLOUD SYNC -->
+  <div id="authModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-indigo-600/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <i class="fa-solid fa-user-shield"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white">User Profile &amp; Cloud Sync</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Private per-user ledger synced across devices</p>
+          </div>
+        </div>
+        <button onclick="closeAuthModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
 
+      <!-- View A: Logged-In Profile View -->
+      <div id="authLoggedInView" class="hidden space-y-4">
+        <div class="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Active Profile</div>
+            <div id="authCurrentUsername" class="text-base font-extrabold font-mono text-slate-900 dark:text-white mt-0.5"></div>
+            <div id="authLastSyncText" class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Synced with cloud</div>
+          </div>
+          <button
+            type="button"
+            onclick="syncWithCloud(true)"
+            class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5"
+          >
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span>Sync Now</span>
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+          <button
+            type="button"
+            onclick="handleLogoutProfile()"
+            class="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-600 text-rose-600 dark:text-rose-400 hover:text-white text-xs font-bold transition flex items-center gap-1.5"
+          >
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Switch / Log Out</span>
+          </button>
+          <button
+            type="button"
+            onclick="closeAuthModal()"
+            class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+
+      <!-- View B: Login / Sign Up Form -->
+      <form id="authFormView" onsubmit="handleAuthSubmit(event)" class="space-y-3.5">
+        <input type="hidden" id="authActionMode" value="login" />
+
+        <div class="grid grid-cols-2 rounded-xl p-1 bg-slate-100 dark:bg-slate-800">
+          <button
+            type="button"
+            id="authTabLogin"
+            onclick="setAuthMode('login')"
+            class="py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-xs transition"
+          >
+            Login to Profile
+          </button>
+          <button
+            type="button"
+            id="authTabSignup"
+            onclick="setAuthMode('signup')"
+            class="py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition"
+          >
+            Create New Profile
+          </button>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Username</label>
+          <input
+            type="text"
+            id="authUsernameInput"
+            required
+            autocomplete="username"
+            placeholder="e.g. rahul_ledger"
+            class="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Password / PIN</label>
+          <input
+            type="password"
+            id="authPasswordInput"
+            required
+            autocomplete="current-password"
+            placeholder="Enter your secret password"
+            class="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <p id="authHelperText" class="text-[11px] text-slate-500 dark:text-slate-400">
+          Logs in once and stays signed in offline &amp; online across sessions.
+        </p>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onclick="closeAuthModal()"
+            class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+          >
+            Continue Offline
+          </button>
+          <button
+            type="submit"
+            id="authSubmitBtn"
+            class="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white"
+          >
+            Login &amp; Sync
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
   <!-- TOAST NOTIFICATION CONTAINER -->
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
 
@@ -992,6 +1133,25 @@
       };
     }
 
+const SESSION_KEY = 'pocket_ledger_session_v1';
+    let isSyncingCloud = false;
+
+    function getSession() {
+      try {
+        const raw = localStorage.getItem(SESSION_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function getUserStorageKey() {
+      const session = getSession();
+      return session && session.username
+        ? `pocket_ledger_data_${session.username.toLowerCase()}`
+        : STORAGE_KEY;
+    }
+
     let appState = loadState();
     // Derived state cache populated by recomputeDerivedState()
     let derived = {
@@ -1011,26 +1171,35 @@
 
     function loadState() {
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return getDefaultDemoState();
+        const key = getUserStorageKey();
+        const raw = localStorage.getItem(key);
+        if (!raw) {
+          // Logged-in profiles start clean if no local cache exists yet; guest mode loads default state
+          return getSession() ? getEmptyFreshState() : getDefaultDemoState();
+        }
         const parsed = JSON.parse(raw);
         if (!parsed || !Array.isArray(parsed.balances) || !Array.isArray(parsed.transactions)) {
-          return getDefaultDemoState();
+          return getSession() ? getEmptyFreshState() : getDefaultDemoState();
         }
         return parsed;
       } catch (e) {
-        return getDefaultDemoState();
+        return getEmptyFreshState();
       }
     }
 
-    function saveState() {
+    function saveState(skipCloudPush = false) {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+        if (!skipCloudPush) {
+          appState.updatedAt = Date.now();
+        }
+        localStorage.setItem(getUserStorageKey(), JSON.stringify(appState));
+        if (!skipCloudPush && getSession()) {
+          pushStateToCloud();
+        }
       } catch (e) {
         console.error('Failed to save state:', e);
       }
     }
-
     /**
      * ==================== CORE MATHEMATICAL ENGINE ====================
      * Recomputes every Balance's inHand, lentOut, borrowedIn, every Split's currentAmount,
@@ -3256,9 +3425,222 @@ const currentNet = existingPerson
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+// ==================== MULTI-DEVICE CLOUD SYNC & PROFILE AUTH ====================
+
+    function updateProfileUI(status = 'idle') {
+      const session = getSession();
+      const dot = document.getElementById('syncStatusDot');
+      const label = document.getElementById('profileBtnLabel');
+      if (!dot || !label) return;
+
+      if (!session || !session.username) {
+        dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+        label.textContent = 'Login / Sync';
+        return;
+      }
+
+      label.textContent = session.username;
+      if (status === 'syncing') {
+        dot.className = 'w-2 h-2 rounded-full bg-indigo-400 animate-ping';
+      } else if (status === 'error') {
+        dot.className = 'w-2 h-2 rounded-full bg-rose-500';
+      } else {
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+      }
+    }
+
+    function setAuthMode(mode) {
+      document.getElementById('authActionMode').value = mode;
+      const loginTab = document.getElementById('authTabLogin');
+      const signupTab = document.getElementById('authTabSignup');
+      const submitBtn = document.getElementById('authSubmitBtn');
+      const helper = document.getElementById('authHelperText');
+
+      if (mode === 'login') {
+        loginTab.className = 'py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-xs transition';
+        signupTab.className = 'py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition';
+        submitBtn.textContent = 'Login & Sync';
+        helper.textContent = 'Access your existing cloud-synced ledger on this device.';
+      } else {
+        signupTab.className = 'py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-xs transition';
+        loginTab.className = 'py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition';
+        submitBtn.textContent = 'Create Profile';
+        helper.textContent = 'Creates a private, isolated profile for your own balances & people.';
+      }
+    }
+
+    function openAuthModal() {
+      const session = getSession();
+      const loggedInView = document.getElementById('authLoggedInView');
+      const formView = document.getElementById('authFormView');
+
+      if (session && session.username) {
+        loggedInView.classList.remove('hidden');
+        formView.classList.add('hidden');
+        document.getElementById('authCurrentUsername').textContent = '@' + session.username;
+        const lastUpdated = appState.updatedAt
+          ? new Date(appState.updatedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+          : 'Just now';
+        document.getElementById('authLastSyncText').textContent = `Last local/cloud activity: ${lastUpdated}`;
+      } else {
+        loggedInView.classList.add('hidden');
+        formView.classList.remove('hidden');
+        setAuthMode('login');
+      }
+
+      const modal = document.getElementById('authModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeAuthModal() {
+      const modal = document.getElementById('authModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      const action = document.getElementById('authActionMode').value;
+      const username = document.getElementById('authUsernameInput').value.trim().toLowerCase();
+      const password = document.getElementById('authPasswordInput').value;
+      const submitBtn = document.getElementById('authSubmitBtn');
+
+      if (!username || !password) return;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Please wait...';
+
+      try {
+        const res = await fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, username, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showToast(data.error || 'Authentication failed', 'error');
+          submitBtn.disabled = false;
+          setAuthMode(action);
+          return;
+        }
+
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ username: data.username, token: data.token }));
+
+        if (data.appData && Array.isArray(data.appData.balances)) {
+          appState = data.appData;
+          saveState(true);
+        } else {
+          appState = getEmptyFreshState();
+          saveState(false); // Pushes initial clean profile state to cloud
+        }
+
+        document.getElementById('authPasswordInput').value = '';
+        closeAuthModal();
+        updateProfileUI('idle');
+        renderAll();
+        showToast(`Welcome @${data.username}! Your profile is synced.`, 'success');
+      } catch (err) {
+        showToast('Network error — could not reach sync server.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        setAuthMode(action);
+      }
+    }
+
+    function handleLogoutProfile() {
+      if (!confirm('Switch or log out of this profile on this device? Your synced data remains safe in the cloud.')) return;
+      localStorage.removeItem(SESSION_KEY);
+      appState = loadState();
+      closeAuthModal();
+      updateProfileUI('idle');
+      renderAll();
+      showToast('Logged out of profile.', 'info');
+    }
+
+    async function pushStateToCloud() {
+      const session = getSession();
+      if (!session || !session.token) return;
+
+      updateProfileUI('syncing');
+      try {
+        const res = await fetch('/api/sync', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.token}`
+          },
+          body: JSON.stringify({ action: 'push', appData: appState })
+        });
+        updateProfileUI(res.ok ? 'idle' : 'error');
+      } catch (e) {
+        updateProfileUI('error');
+      }
+    }
+
+    async function syncWithCloud(showFeedback = false) {
+      const session = getSession();
+      if (!session || !session.token || isSyncingCloud) return;
+
+      isSyncingCloud = true;
+      updateProfileUI('syncing');
+
+      try {
+        const res = await fetch('/api/sync', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.token}`
+          },
+          body: JSON.stringify({ action: 'pull' })
+        });
+
+        if (!res.ok) {
+          updateProfileUI('error');
+          isSyncingCloud = false;
+          return;
+        }
+
+        const { appData: cloudData } = await res.json();
+        const cloudTime = cloudData?.updatedAt || 0;
+        const localTime = appState?.updatedAt || 0;
+
+        if (cloudData && cloudTime > localTime) {
+          appState = cloudData;
+          saveState(true);
+          renderAll();
+          if (showFeedback) showToast('Pulled latest changes from cloud!', 'success');
+        } else if (localTime > cloudTime) {
+          await pushStateToCloud();
+          if (showFeedback) showToast('Pushed local changes to cloud!', 'success');
+        } else if (showFeedback) {
+          showToast('Already 100% in sync with cloud!', 'info');
+        }
+
+        updateProfileUI('idle');
+      } catch (e) {
+        updateProfileUI('error');
+        if (showFeedback) showToast('Offline — changes saved locally and will sync when online.', 'info');
+      } finally {
+        isSyncingCloud = false;
+      }
+    }
+
+    // Lifecycle Auto-Sync Triggers
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') syncWithCloud(false);
+    });
+    window.addEventListener('online', () => syncWithCloud(false));
+
     window.addEventListener('DOMContentLoaded', () => {
+      updateProfileUI('idle');
       renderAll();
       switchAppPage('balances');
+      syncWithCloud(false);
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      }
     });
   </script>
 </body>
