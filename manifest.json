@@ -1,10 +1,11 @@
 {
-  "name": "Money & Split Balance Tracker",
-  "short_name": "MoneyApp",
+  "name": "PocketLedger — Money & Split Tracker",
+  "short_name": "PocketLedger",
   "start_url": "/",
-  "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#4f46e5",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "background_color": "#0b1120",
+  "theme_color": "#0f172a",
   "orientation": "portrait-primary",
   "icons": [
     {
